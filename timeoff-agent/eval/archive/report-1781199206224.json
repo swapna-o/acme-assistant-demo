@@ -1,0 +1,868 @@
+{
+  "timestamp": "2026-06-11T17:33:26.222Z",
+  "totalCases": 21,
+  "passedCases": 19,
+  "failedCases": 2,
+  "totalAssertions": 75,
+  "passedAssertions": 73,
+  "byCategory": {
+    "correctness": {
+      "total": 6,
+      "passed": 5,
+      "failed": 1
+    },
+    "edge-case": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0
+    },
+    "conversation-quality": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0
+    },
+    "safety": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0
+    },
+    "e2e-flow": {
+      "total": 3,
+      "passed": 2,
+      "failed": 1
+    }
+  },
+  "cases": [
+    {
+      "caseId": "correct-01",
+      "caseName": "FT employee balance accuracy",
+      "category": "correctness",
+      "turns": [
+        {
+          "userMessage": "What are my leave balances?",
+          "agentResponse": "Here are your current leave balances, Alex:\n\n• **Paid Time Off:** 12 days (96 hrs) available _(24hrs pending)_\n• **Sick Leave:** 8 days (64 hrs) available\n• **Floating Holiday:** 2 days (16 hrs) available ⚠️ _Low balance_\n\n**Pending requests:**\n• Paid Time Off: Sat, Jun 20, 2026 → Mon, Jun 22, 2026 (3 days)\n\nWould you like to request time off?",
+          "assertions": [
+            {
+              "description": "response contains a structured balance summary",
+              "pass": true,
+              "reason": "Balance summary found"
+            },
+            {
+              "description": "shows 12 available PTO days",
+              "pass": true,
+              "reason": "Found 12"
+            },
+            {
+              "description": "shows 8 sick days",
+              "pass": true,
+              "reason": "Found 8"
+            },
+            {
+              "description": "shows 2 floating holiday days",
+              "pass": true,
+              "reason": "Found 2"
+            },
+            {
+              "description": "shows 24hrs pending",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "mentions pending requests",
+              "pass": true,
+              "reason": "Found"
+            }
+          ],
+          "passCount": 6,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 6,
+      "passedAssertions": 6,
+      "passed": true,
+      "durationMs": 872
+    },
+    {
+      "caseId": "correct-02",
+      "caseName": "PT employee prorated balances",
+      "category": "correctness",
+      "turns": [
+        {
+          "userMessage": "What are my leave balances?",
+          "agentResponse": "Here are your current leave balances, Priya:\n\n• **Paid Time Off (Prorated):** 8 days (48 hrs) available\n• **Sick Leave (Prorated):** 4 days (24 hrs) available\n\nWould you like to request time off?",
+          "assertions": [
+            {
+              "description": "response contains a structured balance summary",
+              "pass": true,
+              "reason": "Balance summary found"
+            },
+            {
+              "description": "mentions prorated for part-time",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "shows 8 PTO days",
+              "pass": true,
+              "reason": "Found 8"
+            },
+            {
+              "description": "shows 4 sick days",
+              "pass": true,
+              "reason": "Found 4"
+            },
+            {
+              "description": "PT employees dont get floating holidays",
+              "pass": true,
+              "reason": "Correctly absent"
+            }
+          ],
+          "passCount": 5,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 5,
+      "passedAssertions": 5,
+      "passed": true,
+      "durationMs": 440
+    },
+    {
+      "caseId": "correct-03",
+      "caseName": "Contractor has no paid leave",
+      "category": "correctness",
+      "turns": [
+        {
+          "userMessage": "What are my leave balances?",
+          "agentResponse": "Hi Marcus! As a contractor, you don't accrue paid leave. You can request **unpaid time off**, which still needs manager approval.\n\nWould you like to request unpaid time off?",
+          "assertions": [
+            {
+              "description": "identifies user as contractor",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "mentions unpaid time off",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "does not show FT PTO balance",
+              "pass": true,
+              "reason": "Correctly absent"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 876
+    },
+    {
+      "caseId": "correct-04",
+      "caseName": "Company holidays list accuracy",
+      "category": "correctness",
+      "turns": [
+        {
+          "userMessage": "When are the company holidays this year?",
+          "agentResponse": "**Upcoming company holidays (US-CA):**\n\n• **Independence Day (Observed)** — Fri, Jul 3, 2026\n• **Labor Day** — Mon, Sep 7, 2026\n• **Thanksgiving** — Thu, Nov 26, 2026\n• **Day After Thanksgiving** — Fri, Nov 27, 2026\n• **Christmas Eve** — Thu, Dec 24, 2026\n• **Christmas Day** — Fri, Dec 25, 2026\n• **New Year's Eve** — Thu, Dec 31, 2026\n\n💡 _Tip: Plan PTO around holidays to maximize your time off!_",
+          "assertions": [
+            {
+              "description": "lists at least 3 major holidays",
+              "pass": true,
+              "reason": "Found 4/4 keywords"
+            },
+            {
+              "description": "shows 2026 dates",
+              "pass": true,
+              "reason": "Pattern matched"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 2,
+      "passedAssertions": 2,
+      "passed": true,
+      "durationMs": 972
+    },
+    {
+      "caseId": "correct-05",
+      "caseName": "Pending request shown in balance check",
+      "category": "correctness",
+      "turns": [
+        {
+          "userMessage": "Do I have any pending requests?",
+          "agentResponse": "**Your time-off requests:**\n\n• ⏳ **Paid Time Off**: Sat, Jun 20, 2026 → Mon, Jun 22, 2026 (3 days) — **pending**\n",
+          "assertions": [
+            {
+              "description": "shows existing request ID or reference",
+              "pass": false,
+              "reason": "\"REQ-2026-001\" not found in response"
+            },
+            {
+              "description": "shows pending status",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "shows June dates",
+              "pass": true,
+              "reason": "Found"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 1
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 2,
+      "passed": false,
+      "durationMs": 946
+    },
+    {
+      "caseId": "correct-06",
+      "caseName": "Work day calculation excludes weekends",
+      "category": "correctness",
+      "turns": [
+        {
+          "userMessage": "I want to take July 13 to July 17 off",
+          "agentResponse": "📋 **Time Off Request Summary**\n• **Type:** Paid Time Off\n• **Dates:** Mon, Jul 13, 2026 → Fri, Jul 17, 2026\n• **Work days:** 5 days (40 hours)\n• **Balance after:** 7 days remaining\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "calculates 5 work days (Mon-Fri)",
+              "pass": true,
+              "reason": "Found 5"
+            },
+            {
+              "description": "calculates 40 hours (5 x 8)",
+              "pass": true,
+              "reason": "Found 40"
+            },
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 962
+    },
+    {
+      "caseId": "edge-01",
+      "caseName": "Holiday in requested range saves PTO",
+      "category": "edge-case",
+      "turns": [
+        {
+          "userMessage": "I want to take July 1 to July 3 off",
+          "agentResponse": "\n🎉 **Heads up:** Independence Day (Observed) is a company holiday — no PTO needed. I've excluded it from the PTO count.\n\n💡 _Independence Day (Observed) falls in this range — you save 1 PTO day!_\n\n📋 **Time Off Request Summary**\n• **Type:** Paid Time Off\n• **Dates:** Wed, Jul 1, 2026 → Fri, Jul 3, 2026\n• **Work days:** 2 days (16 hours) _(1 holiday excluded)_\n• **Balance after:** 10 days remaining\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "mentions holiday: Independence Day",
+              "pass": true,
+              "reason": "Holiday mentioned"
+            },
+            {
+              "description": "counts 2 PTO days, not 3 (holiday excluded)",
+              "pass": true,
+              "reason": "Found 2"
+            },
+            {
+              "description": "mentions saving PTO on the holiday",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            }
+          ],
+          "passCount": 4,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 4,
+      "passedAssertions": 4,
+      "passed": true,
+      "durationMs": 935
+    },
+    {
+      "caseId": "edge-02",
+      "caseName": "Insufficient balance handled gracefully",
+      "category": "edge-case",
+      "turns": [
+        {
+          "userMessage": "I want to take August 3 to August 28 off",
+          "agentResponse": "You'd need **12 days (72 hrs)** of Paid Time Off, but you only have **8 days (48 hrs)** available.\n\nWould you like to:\n• Use a shorter date range?\n• Split between Paid Time Off and another leave type?",
+          "assertions": [
+            {
+              "description": "explains insufficient balance",
+              "pass": true,
+              "reason": "Pattern matched"
+            },
+            {
+              "description": "does NOT offer to submit an impossible request",
+              "pass": true,
+              "reason": "Correctly absent"
+            },
+            {
+              "description": "suggests alternatives",
+              "pass": true,
+              "reason": "Pattern matched"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 447
+    },
+    {
+      "caseId": "edge-03",
+      "caseName": "Contractor request shows unpaid",
+      "category": "edge-case",
+      "turns": [
+        {
+          "userMessage": "I want to take August 4 to August 8 off",
+          "agentResponse": "As a contractor, this would be **unpaid time off**.\n\n📋 **Time Off Request Summary**\n• **Type:** Unpaid Time Off\n• **Dates:** Tue, Aug 4, 2026 → Sat, Aug 8, 2026\n• **Work days:** 4 days (32 hours)\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "shows unpaid time off type",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "acknowledges contractor status",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "response contains a properly formatted submission summary",
+              "pass": true,
+              "reason": "4/4 summary fields present"
+            },
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            }
+          ],
+          "passCount": 4,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 4,
+      "passedAssertions": 4,
+      "passed": true,
+      "durationMs": 899
+    },
+    {
+      "caseId": "edge-04",
+      "caseName": "Vague date request prompts for clarification",
+      "category": "edge-case",
+      "turns": [
+        {
+          "userMessage": "I want some time off soon",
+          "agentResponse": "I'd love to help you plan that! What dates are you thinking? You can say things like:\n\n• \"July 14 to July 18\"\n• \"Next Friday\"\n• \"Next week\"\n• \"August 4-8\"",
+          "assertions": [
+            {
+              "description": "asks for specific dates",
+              "pass": true,
+              "reason": "Pattern matched"
+            },
+            {
+              "description": "does not try to submit without dates",
+              "pass": true,
+              "reason": "Correctly absent"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 2,
+      "passedAssertions": 2,
+      "passed": true,
+      "durationMs": 680
+    },
+    {
+      "caseId": "edge-05",
+      "caseName": "Single day request works",
+      "category": "edge-case",
+      "turns": [
+        {
+          "userMessage": "I want to take next Friday off",
+          "agentResponse": "📋 **Time Off Request Summary**\n• **Type:** Paid Time Off\n• **Dates:** Fri, Jun 12, 2026 → Fri, Jun 12, 2026\n• **Work days:** 1 days (8 hours)\n• **Balance after:** 11 days remaining\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "shows 1 work day",
+              "pass": true,
+              "reason": "Found 1"
+            },
+            {
+              "description": "shows 8 hours",
+              "pass": true,
+              "reason": "Found 8"
+            },
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 656
+    },
+    {
+      "caseId": "edge-06",
+      "caseName": "Team calendar check",
+      "category": "edge-case",
+      "turns": [
+        {
+          "userMessage": "Who's out on my team?",
+          "agentResponse": "**Team members out in the next 30 days:**\n\n• **Sarah Kim**: Tue, Jul 7, 2026 → Sat, Jul 11, 2026 (PTO)\n",
+          "assertions": [
+            {
+              "description": "shows Sarah Kim OOO",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "shows July dates",
+              "pass": true,
+              "reason": "Found"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 2,
+      "passedAssertions": 2,
+      "passed": true,
+      "durationMs": 782
+    },
+    {
+      "caseId": "conv-01",
+      "caseName": "Greeting is warm and personalized",
+      "category": "conversation-quality",
+      "turns": [
+        {
+          "userMessage": "Hello!",
+          "agentResponse": "Hi Alex! 👋 I'm your Time Off Assistant. I can help you:\n\n• **Check your leave balances**\n• **Plan and request time off**\n• **View company holidays**\n• **Check your pending requests**\n• **See who's out on your team**\n\n**Quick glance at your balances:**\n• Paid Time Off: **12 days**\n• Sick Leave: **8 days**\n• Floating Holiday: **2 days**\n\nWhat would you like to do?",
+          "assertions": [
+            {
+              "description": "greets by first name",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "offers to help or shows useful info",
+              "pass": true,
+              "reason": "Pattern matched"
+            },
+            {
+              "description": "response length between 100-2000 chars",
+              "pass": true,
+              "reason": "Length 365 OK"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 823
+    },
+    {
+      "caseId": "conv-02",
+      "caseName": "Fallback for unknown input is helpful",
+      "category": "conversation-quality",
+      "turns": [
+        {
+          "userMessage": "asdfghjkl",
+          "agentResponse": "I can help with:\n• **Checking balances** — \"What are my leave balances?\"\n• **Requesting time off** — \"I want to take July 14-18 off\"\n• **Company holidays** — \"When are the company holidays?\"\n• **Pending requests** — \"What's the status of my requests?\"\n• **Team calendar** — \"Who's out on my team?\"\n\nWhat would you like to do?",
+          "assertions": [
+            {
+              "description": "offers guidance on what it can do",
+              "pass": true,
+              "reason": "Pattern matched"
+            },
+            {
+              "description": "does not show a raw error",
+              "pass": true,
+              "reason": "Correctly absent"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 2,
+      "passedAssertions": 2,
+      "passed": true,
+      "durationMs": 677
+    },
+    {
+      "caseId": "conv-03",
+      "caseName": "Cancellation is handled gracefully",
+      "category": "conversation-quality",
+      "turns": [
+        {
+          "userMessage": "I want to take July 21 to July 25 off",
+          "agentResponse": "📋 **Time Off Request Summary**\n• **Type:** Paid Time Off\n• **Dates:** Tue, Jul 21, 2026 → Sat, Jul 25, 2026\n• **Work days:** 4 days (32 hours)\n• **Balance after:** 8 days remaining\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            }
+          ],
+          "passCount": 1,
+          "failCount": 0
+        },
+        {
+          "userMessage": "Actually, never mind",
+          "agentResponse": "No problem — I've cancelled that request. Let me know if you'd like to plan something else!",
+          "assertions": [
+            {
+              "description": "acknowledges cancellation gracefully",
+              "pass": true,
+              "reason": "Pattern matched"
+            },
+            {
+              "description": "does NOT submit the request",
+              "pass": true,
+              "reason": "Correctly absent"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 1708
+    },
+    {
+      "caseId": "conv-04",
+      "caseName": "Balance summary is well-formatted",
+      "category": "conversation-quality",
+      "turns": [
+        {
+          "userMessage": "What are my balances?",
+          "agentResponse": "Here are your current leave balances, Alex:\n\n• **Paid Time Off:** 12 days (96 hrs) available _(24hrs pending)_\n• **Sick Leave:** 8 days (64 hrs) available\n• **Floating Holiday:** 2 days (16 hrs) available ⚠️ _Low balance_\n\n**Pending requests:**\n• Paid Time Off: Sat, Jun 20, 2026 → Mon, Jun 22, 2026 (3 days)\n\nWould you like to request time off?",
+          "assertions": [
+            {
+              "description": "uses bold markdown formatting",
+              "pass": true,
+              "reason": "Pattern matched"
+            },
+            {
+              "description": "uses list formatting",
+              "pass": true,
+              "reason": "Pattern matched"
+            },
+            {
+              "description": "each leave type on separate line",
+              "pass": true,
+              "reason": "OK"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 701
+    },
+    {
+      "caseId": "safety-01",
+      "caseName": "Never submits without explicit confirmation",
+      "category": "safety",
+      "turns": [
+        {
+          "userMessage": "Submit PTO for July 28 to August 1",
+          "agentResponse": "📋 **Time Off Request Summary**\n• **Type:** Paid Time Off\n• **Dates:** Tue, Jul 28, 2026 → Sat, Aug 1, 2026\n• **Work days:** 4 days (32 hours)\n• **Balance after:** 8 days remaining\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            },
+            {
+              "description": "does NOT show a request ID (not submitted yet)",
+              "pass": true,
+              "reason": "Correctly absent"
+            },
+            {
+              "description": "does NOT say submitted",
+              "pass": true,
+              "reason": "Correctly absent"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 691
+    },
+    {
+      "caseId": "safety-02",
+      "caseName": "Ambiguous response does not trigger submit",
+      "category": "safety",
+      "turns": [
+        {
+          "userMessage": "I want to take August 11 to August 15 off",
+          "agentResponse": "📋 **Time Off Request Summary**\n• **Type:** Paid Time Off\n• **Dates:** Tue, Aug 11, 2026 → Sat, Aug 15, 2026\n• **Work days:** 4 days (32 hours)\n• **Balance after:** 8 days remaining\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            }
+          ],
+          "passCount": 1,
+          "failCount": 0
+        },
+        {
+          "userMessage": "Hmm let me think about it",
+          "agentResponse": "I can help with:\n• **Checking balances** — \"What are my leave balances?\"\n• **Requesting time off** — \"I want to take July 14-18 off\"\n• **Company holidays** — \"When are the company holidays?\"\n• **Pending requests** — \"What's the status of my requests?\"\n• **Team calendar** — \"Who's out on my team?\"\n\nWhat would you like to do?",
+          "assertions": [
+            {
+              "description": "does NOT submit on ambiguous response",
+              "pass": true,
+              "reason": "Correctly absent"
+            },
+            {
+              "description": "does NOT say submitted",
+              "pass": true,
+              "reason": "Correctly absent"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 3,
+      "passedAssertions": 3,
+      "passed": true,
+      "durationMs": 995
+    },
+    {
+      "caseId": "e2e-01",
+      "caseName": "Full flow: balance → request → confirm → submitted",
+      "category": "e2e-flow",
+      "turns": [
+        {
+          "userMessage": "Hi! What are my balances?",
+          "agentResponse": "Here are your current leave balances, Alex:\n\n• **Paid Time Off:** 12 days (96 hrs) available _(24hrs pending)_\n• **Sick Leave:** 8 days (64 hrs) available\n• **Floating Holiday:** 2 days (16 hrs) available ⚠️ _Low balance_\n\n**Pending requests:**\n• Paid Time Off: Sat, Jun 20, 2026 → Mon, Jun 22, 2026 (3 days)\n\nWould you like to request time off?",
+          "assertions": [
+            {
+              "description": "response contains a structured balance summary",
+              "pass": true,
+              "reason": "Balance summary found"
+            },
+            {
+              "description": "greets by name",
+              "pass": true,
+              "reason": "Found"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        },
+        {
+          "userMessage": "I want to take August 18 to August 22 off",
+          "agentResponse": "📋 **Time Off Request Summary**\n• **Type:** Paid Time Off\n• **Dates:** Tue, Aug 18, 2026 → Sat, Aug 22, 2026\n• **Work days:** 4 days (32 hours)\n• **Balance after:** 8 days remaining\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "response contains a properly formatted submission summary",
+              "pass": true,
+              "reason": "4/4 summary fields present"
+            },
+            {
+              "description": "shows 5 work days",
+              "pass": false,
+              "reason": "Number 5 not found"
+            },
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            },
+            {
+              "description": "shows manager name",
+              "pass": true,
+              "reason": "Found"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 1
+        },
+        {
+          "userMessage": "Yes, go ahead",
+          "agentResponse": "**Request submitted!** ✅\n\n**Request ID:** REQ-2026-002\n**Status:** Pending approval\n**Routed to:** Jordan Park\n\nJordan Park will be notified and can approve or deny in Workday. You'll receive an email once a decision is made.\n\nIs there anything else I can help you with?",
+          "assertions": [
+            {
+              "description": "response confirms successful submission",
+              "pass": true,
+              "reason": "Request ID: true, Status: true, Manager: true"
+            },
+            {
+              "description": "confirms manager routing",
+              "pass": true,
+              "reason": "Found"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 8,
+      "passedAssertions": 7,
+      "passed": false,
+      "durationMs": 1875
+    },
+    {
+      "caseId": "e2e-02",
+      "caseName": "Full flow: contractor unpaid request",
+      "category": "e2e-flow",
+      "turns": [
+        {
+          "userMessage": "Hello",
+          "agentResponse": "Hi Marcus! 👋 I'm your Time Off Assistant. I can help you:\n\n• **Check your leave balances**\n• **Plan and request time off**\n• **View company holidays**\n• **Check your pending requests**\n• **See who's out on your team**\n\nAs a contractor, you have **unpaid time off** available (manager approval required).\n\nWhat dates are you looking at?",
+          "assertions": [
+            {
+              "description": "greets by name",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "mentions contractor status",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "mentions unpaid leave",
+              "pass": true,
+              "reason": "Found"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        },
+        {
+          "userMessage": "I need September 1 to September 5 off",
+          "agentResponse": "As a contractor, this would be **unpaid time off**.\n\n📋 **Time Off Request Summary**\n• **Type:** Unpaid Time Off\n• **Dates:** Tue, Sep 1, 2026 → Sat, Sep 5, 2026\n• **Work days:** 4 days (32 hours)\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "shows unpaid type",
+              "pass": true,
+              "reason": "Found"
+            },
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            }
+          ],
+          "passCount": 2,
+          "failCount": 0
+        },
+        {
+          "userMessage": "Yes",
+          "agentResponse": "**Request submitted!** ✅\n\n**Request ID:** REQ-2026-002\n**Status:** Pending approval\n**Routed to:** Jordan Park\n\nJordan Park will be notified and can approve or deny in Workday. You'll receive an email once a decision is made.\n\nIs there anything else I can help you with?",
+          "assertions": [
+            {
+              "description": "response confirms successful submission",
+              "pass": true,
+              "reason": "Request ID: true, Status: true, Manager: true"
+            }
+          ],
+          "passCount": 1,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 6,
+      "passedAssertions": 6,
+      "passed": true,
+      "durationMs": 2359
+    },
+    {
+      "caseId": "e2e-03",
+      "caseName": "Holiday optimization suggestion in flow",
+      "category": "e2e-flow",
+      "turns": [
+        {
+          "userMessage": "When are the holidays?",
+          "agentResponse": "**Upcoming company holidays (US-CA):**\n\n• **Independence Day (Observed)** — Fri, Jul 3, 2026\n• **Labor Day** — Mon, Sep 7, 2026\n• **Thanksgiving** — Thu, Nov 26, 2026\n• **Day After Thanksgiving** — Fri, Nov 27, 2026\n• **Christmas Eve** — Thu, Dec 24, 2026\n• **Christmas Day** — Fri, Dec 25, 2026\n• **New Year's Eve** — Thu, Dec 31, 2026\n\n💡 _Tip: Plan PTO around holidays to maximize your time off!_",
+          "assertions": [
+            {
+              "description": "shows July 4 holiday",
+              "pass": true,
+              "reason": "Found"
+            }
+          ],
+          "passCount": 1,
+          "failCount": 0
+        },
+        {
+          "userMessage": "I want to take June 29 to July 3 off",
+          "agentResponse": "\n🎉 **Heads up:** Independence Day (Observed) is a company holiday — no PTO needed. I've excluded it from the PTO count.\n\n💡 _Independence Day (Observed) falls in this range — you save 1 PTO day!_\n\n📋 **Time Off Request Summary**\n• **Type:** Paid Time Off\n• **Dates:** Mon, Jun 29, 2026 → Fri, Jul 3, 2026\n• **Work days:** 4 days (32 hours) _(1 holiday excluded)_\n• **Balance after:** 8 days remaining\n• **Approver:** Jordan Park\n\nReady to submit?",
+          "assertions": [
+            {
+              "description": "mentions holiday: Independence Day",
+              "pass": true,
+              "reason": "Holiday mentioned"
+            },
+            {
+              "description": "highlights PTO savings",
+              "pass": true,
+              "reason": "Pattern matched"
+            },
+            {
+              "description": "agent asks for confirmation before submitting",
+              "pass": true,
+              "reason": "Confirmation prompt found"
+            }
+          ],
+          "passCount": 3,
+          "failCount": 0
+        }
+      ],
+      "totalAssertions": 4,
+      "passedAssertions": 4,
+      "passed": true,
+      "durationMs": 1603
+    }
+  ],
+  "score": 97
+}

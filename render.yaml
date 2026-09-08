@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: acme-assistant-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: deploy/demo/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/policy/docs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEMO_RESET_MINUTES
+        value: "30"

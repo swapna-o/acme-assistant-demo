@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Agent Builder's Playbook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Top progress bar -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Sidebar nav -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">&#9670;</div>
+    <span>Agent Playbook</span>
+  </div>
+  <ul class="sidebar-nav" id="sidebarNav">
+    <li><a href="#hero" class="active">Overview</a></li>
+    <li><span class="nav-group-label">Why</span></li>
+    <li><a href="#the-problem">The Problem</a></li>
+    <li><a href="#should-this-be-agent">Do I Need an Agent?</a></li>
+    <li><span class="nav-group-label">What &mdash; Value &amp; ROI</span></li>
+    <li><a href="#cost-tokens">Cost &amp; Tokens</a></li>
+    <li><a href="#business-metrics">Business Metrics</a></li>
+    <li><a href="#launch-plan">Launch Plan</a></li>
+    <li><span class="nav-group-label">How &mdash; Build It</span></li>
+    <li><a href="#instruction-file">The Instruction File</a></li>
+    <li><a href="#tool-design">Tool Design</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#agent-work-cycles">Agent Work Cycles</a></li>
+    <li><a href="#conversation-flow">Conversation Flow</a></li>
+    <li><a href="#human-approval">Human Approval</a></li>
+    <li><a href="#testing">Testing</a></li>
+    <li><span class="nav-group-label">Considerations</span></li>
+    <li><a href="#considerations">Risks &amp; Governance</a></li>
+    <li><a href="#guardrails">Guardrails</a></li>
+    <li><a href="#monitoring">Monitoring</a></li>
+    <li><a href="#anti-patterns">Common Mistakes</a></li>
+    <li><a href="#checklist">Ship Checklist</a></li>
+  </ul>
+</nav>
+
+<!-- Mobile nav toggle -->
+<button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+  <span></span><span></span><span></span>
+</button>
+
+<!-- Main content -->
+<main class="content" id="content">
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-badge">Why &middot; What &middot; How &middot; Considerations</div>
+    <h1>The Agent Builder's<br>Playbook</h1>
+    <p class="hero-sub">AI should solve a real problem, not be AI for AI's sake.
+    This is a business-first guide to building agents &mdash; when to build one, what it's worth, how to build it right, and what can go wrong.<br><br>
+    Using a <strong>Workday Time-Off Agent</strong> as the running example.</p>
+    <div class="hero-cards">
+      <div class="hero-card">
+        <div class="hero-card-icon">&#128176;</div>
+        <div class="hero-card-title">Business Case</div>
+        <div class="hero-card-desc">Why this problem, ROI math, cost per request, monthly projections</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-icon">&#9881;</div>
+        <div class="hero-card-title">Build Guide</div>
+        <div class="hero-card-desc">Instruction files, tool design, architecture, testing</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-icon">&#9888;</div>
+        <div class="hero-card-title">Risks &amp; Trust</div>
+        <div class="hero-card-desc">Cost, accuracy, safety, security, bias, latency, governance</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+       PART I: WHY
+       ============================================ -->
+
+  <div class="section-group" id="why-group">
+    <div class="section-group-label why">Part I</div>
+    <h2>Why Build an Agent?</h2>
+    <p>Start with the business problem. If there's no real pain, there's no reason to build.</p>
+  </div>
+
+  <!-- The Problem -->
+  <section class="phase" id="the-problem">
+    <div class="phase-num">Why</div>
+    <h2>The Problem Worth Solving</h2>
+    <p class="phase-intro">Before you write a line of code, ask: what pain does this eliminate? Who feels it? How often?</p>
+
+    <div class="card example-card">
+      <div class="example-badge">Running Example</div>
+      <h3>Time-Off Requests Are Broken</h3>
+      <div class="check-list">
+        <div class="check-item pass"><span class="check-icon">&#10003;</span> <strong>Employees</strong> dig through confusing Workday forms, check the wrong leave type, forget about holidays, submit incorrectly, wait days for answers</div>
+        <div class="check-item pass"><span class="check-icon">&#10003;</span> <strong>HR teams</strong> answer the same PTO questions hundreds of times, manually check balances, chase down approvals, lose hours every week</div>
+        <div class="check-item pass"><span class="check-icon">&#10003;</span> <strong>Managers</strong> get approval emails with no context &mdash; no team calendar, no coverage info, no conflict check</div>
+        <div class="check-item pass"><span class="check-icon">&#10003;</span> <strong>The company</strong> pays $4.67 per request in HR time, deals with policy errors, and employees avoid the process altogether</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>The Goal</h3>
+      <p>An AI assistant that lets employees say <em>"I want to take July 14-18 off"</em> and handles everything: checks their balance, identifies holidays, confirms with them, and routes the approval &mdash; in 30 seconds instead of 3 days.</p>
+    </div>
+
+    <div class="callout insight">
+      <div class="callout-icon">&#128270;</div>
+      <div class="callout-body">
+        <strong>The acid test:</strong> If nobody would use this voluntarily, don't build it. The time-off agent passes because employees <em>hate</em> the existing process and would genuinely prefer a chat interface that just works.
+      </div>
+    </div>
+  </section>
+
+  <!-- Should This Be an Agent? -->
+  <section class="phase" id="should-this-be-agent">
+    <div class="phase-num">Why</div>
+    <h2>Do I Actually Need an Agent?</h2>
+    <p class="phase-intro">Not everything needs AI. An agent only makes sense when the task is conversational, multi-step, and varies by user. Otherwise you're paying for AI you don't need.</p>
+
+    <div class="card">
+      <h3>The Quick Check &mdash; 5 Questions</h3>
+      <div class="litmus-grid">
+        <div class="litmus-item yes">
+          <div class="litmus-q">Does what the user wants change a lot between sessions?</div>
+          <div class="litmus-a"><span class="tag green">Yes = Agent</span> Agent figures out intent</div>
+        </div>
+        <div class="litmus-item yes">
+          <div class="litmus-q">Are there 3+ actions to choose between based on context?</div>
+          <div class="litmus-a"><span class="tag green">Yes = Agent</span> Agent picks the right tools</div>
+        </div>
+        <div class="litmus-item yes">
+          <div class="litmus-q">Does the task need multiple steps with reasoning in between?</div>
+          <div class="litmus-a"><span class="tag green">Yes = Agent</span> Agent thinks through steps</div>
+        </div>
+        <div class="litmus-item yes">
+          <div class="litmus-q">Is a back-and-forth conversation better than a form?</div>
+          <div class="litmus-a"><span class="tag green">Yes = Agent</span> Agent talks naturally</div>
+        </div>
+        <div class="litmus-item yes">
+          <div class="litmus-q">Can the task go wrong in ways that need flexible recovery?</div>
+          <div class="litmus-a"><span class="tag green">Yes = Agent</span> Agent adapts gracefully</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card warning-card">
+      <h3>When NOT to Use an Agent (Save Your Money)</h3>
+      <div class="wrong-grid">
+        <div class="wrong-item">
+          <div class="wrong-label">High-volume, same-every-time</div>
+          <div class="wrong-example">Expense categorization &rarr; Use a simple classifier</div>
+        </div>
+        <div class="wrong-item">
+          <div class="wrong-label">Fixed step-by-step process</div>
+          <div class="wrong-example">New hire provisioning &rarr; Use a workflow engine</div>
+        </div>
+        <div class="wrong-item">
+          <div class="wrong-label">Needs millisecond response</div>
+          <div class="wrong-example">Real-time fraud detection &rarr; Use rules + ML models</div>
+        </div>
+        <div class="wrong-item">
+          <div class="wrong-label">Simple data entry</div>
+          <div class="wrong-example">"Update my address" &rarr; Use a form</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>The Cost-Benefit Gut Check</h3>
+      <div class="equation">
+        <div class="eq-side">
+          <div class="eq-label">What You Pay</div>
+          <div class="eq-items">AI processing fees + Engineering time + Response latency + Ongoing testing</div>
+        </div>
+        <div class="eq-vs">vs</div>
+        <div class="eq-side">
+          <div class="eq-label">What You Get</div>
+          <div class="eq-items">HR ticket deflection + Faster resolutions + Fewer errors + Employee satisfaction</div>
+        </div>
+      </div>
+      <p class="eq-note">The agent wins when the current process is confusing, involves hidden rules, mistakes are costly, and people do it infrequently enough that they never learn the system.</p>
+    </div>
+  </section>
+
+  <!-- ============================================
+       PART II: WHAT — VALUE & ROI
+       ============================================ -->
+
+  <div class="section-group" id="what-group">
+    <div class="section-group-label what">Part II</div>
+    <h2>What's It Worth?</h2>
+    <p>Model costs are real. Before building, know the math: what each request costs, what you save, and when it pays for itself.</p>
+  </div>
+
+  <!-- Cost & Tokens -->
+  <section class="phase" id="cost-tokens">
+    <div class="phase-num">Value</div>
+    <h2>Cost &amp; Token Estimation</h2>
+    <p class="phase-intro">"How much will this cost per employee?" is the #1 question from customers. Here's how to answer it.</p>
+
+    <div class="card">
+      <h3>What Are Tokens?</h3>
+      <p><strong>Tokens</strong> are the units of text the AI reads and writes. Think of them as word-fragments: <strong>1 token &asymp; &frac34; of a word</strong>. A 100-word message is ~130 tokens. You pay for what goes in (your prompt + conversation) and what comes out (the AI's reply). That's the whole pricing model.</p>
+    </div>
+
+    <div class="card">
+      <h3>Claude Model Pricing (June 2025)</h3>
+      <table class="tool-table">
+        <thead>
+          <tr><th>Model</th><th>Best For</th><th>Input (per 1M tokens)</th><th>Output (per 1M tokens)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Claude Haiku</strong></td>
+            <td><span class="tag green">Agents &amp; high-volume</span></td>
+            <td>$1.00</td>
+            <td>$5.00</td>
+          </tr>
+          <tr>
+            <td><strong>Claude Sonnet</strong></td>
+            <td><span class="tag blue">Balanced quality/cost</span></td>
+            <td>$3.00</td>
+            <td>$15.00</td>
+          </tr>
+          <tr>
+            <td><strong>Claude Opus</strong></td>
+            <td><span class="tag red">Complex reasoning</span></td>
+            <td>$5.00</td>
+            <td>$25.00</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="table-note"><strong>Pro tip:</strong> Prompt caching (reusing the same system prompt across calls) cuts input costs by ~90%. Most agent setups get this automatically.</p>
+    </div>
+
+    <div class="card example-card">
+      <div class="example-badge">Running Example</div>
+      <h3>Time-Off Agent: Token Breakdown per Request</h3>
+      <p>A typical "I want to take July 14-18 off" conversation: <strong>3-4 back-and-forth turns</strong>, <strong>3-5 tool calls</strong>.</p>
+      <table class="tool-table">
+        <thead>
+          <tr><th>Step</th><th>Tokens In</th><th>Tokens Out</th><th>What's Happening</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Turn 1</strong></td>
+            <td>~1,800</td>
+            <td>~200</td>
+            <td>Instructions + user message &rarr; agent decides to look up profile</td>
+          </tr>
+          <tr>
+            <td><strong>Tool calls</strong></td>
+            <td>~2,200</td>
+            <td>~350</td>
+            <td><code>get_employee_profile</code> + <code>get_leave_balances</code> results come back</td>
+          </tr>
+          <tr>
+            <td><strong>Turn 2</strong></td>
+            <td>~2,800</td>
+            <td>~300</td>
+            <td>Agent checks for date conflicts and holidays</td>
+          </tr>
+          <tr>
+            <td><strong>Tool calls</strong></td>
+            <td>~3,200</td>
+            <td>~250</td>
+            <td><code>check_date_conflicts</code> + <code>get_company_holidays</code> results</td>
+          </tr>
+          <tr>
+            <td><strong>Turn 3</strong></td>
+            <td>~3,800</td>
+            <td>~400</td>
+            <td>Agent shows summary, asks "ready to submit?"</td>
+          </tr>
+          <tr>
+            <td><strong>Turn 4</strong></td>
+            <td>~4,200</td>
+            <td>~200</td>
+            <td>User says "yes" &rarr; <code>submit_time_off_request</code> &rarr; done</td>
+          </tr>
+          <tr class="highlight-row">
+            <td><strong>TOTAL</strong></td>
+            <td><strong>~18,000</strong></td>
+            <td><strong>~1,700</strong></td>
+            <td><strong>One complete time-off request</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="table-note">Tokens in grow each turn because the full conversation is resent. Caching the ~800-token system prompt saves money on every call after the first.</p>
+    </div>
+
+    <div class="card">
+      <h3>Cost per Request</h3>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">$0.03</div>
+          <div class="metric-label">Haiku</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">$0.08</div>
+          <div class="metric-label">Sonnet</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">$0.13</div>
+          <div class="metric-label">Opus</div>
+        </div>
+        <div class="metric-card critical">
+          <div class="metric-value">~$0.01</div>
+          <div class="metric-label">Haiku + caching</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Agent vs. Manual Process &mdash; The Real Comparison</h3>
+      <div class="confirm-compare">
+        <div class="confirm-bad">
+          <div class="confirm-header bad-header">Manual (HR Specialist)</div>
+          <div class="confirm-body">
+            &bull; HR specialist cost: ~$35/hr fully loaded<br>
+            &bull; Avg time per request: 8 min<br>
+            &bull; Cost per request: <strong>$4.67</strong><br>
+            &bull; Response time: <strong>4-24 hours</strong><br>
+            &bull; 10K employees &times; 2/mo = <strong>$93,400/mo</strong>
+          </div>
+        </div>
+        <div class="confirm-good">
+          <div class="confirm-header good-header">AI Agent (Haiku + caching)</div>
+          <div class="confirm-body">
+            &bull; Cost per request: <strong>$0.01</strong><br>
+            &bull; Response time: <strong>3-5 seconds</strong><br>
+            &bull; 10K employees &times; 2/mo = <strong>$200/mo</strong><br>
+            &bull; Available 24/7, zero backlog<br>
+            &bull; <strong>99.8% cost reduction</strong>
+          </div>
+        </div>
+      </div>
+      <p class="table-note">Even at 30% deflection (not all requests go through the agent), the savings are dramatic. The agent pays for itself in the first week.</p>
+    </div>
+
+    <div class="card">
+      <h3>Monthly Cost at Scale</h3>
+      <p>Assuming <strong>~2 time-off requests per employee per month</strong>:</p>
+      <table class="decision-table">
+        <thead>
+          <tr><th>Company Size</th><th>Requests/Month</th><th>Haiku + Cache</th><th>Sonnet</th><th>Manual (HR)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>100 employees</td><td>200</td><td><strong>$2</strong></td><td>$16</td><td>$934</td></tr>
+          <tr><td>1,000 employees</td><td>2,000</td><td><strong>$20</strong></td><td>$160</td><td>$9,340</td></tr>
+          <tr><td>10,000 employees</td><td>20,000</td><td><strong>$200</strong></td><td>$1,600</td><td>$93,400</td></tr>
+          <tr><td>50,000 employees</td><td>100,000</td><td><strong>$1,000</strong></td><td>$8,000</td><td>$467,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-icon">&#128161;</div>
+      <div class="callout-body">
+        <strong>Cost optimization:</strong> (1) Use Haiku for most agent tasks &mdash; fast, cheap, accurate enough. (2) Enable prompt caching &mdash; 90% savings on repeated instructions. (3) Summarize conversation history after 8 turns. (4) Use Sonnet/Opus only for genuinely complex reasoning like policy interpretation.
+      </div>
+    </div>
+  </section>
+
+  <!-- Business Metrics -->
+  <section class="phase" id="business-metrics">
+    <div class="phase-num">Value</div>
+    <h2>Business Metrics &amp; Adoption</h2>
+    <p class="phase-intro">The metric that actually matters: do people come back unprompted?</p>
+
+    <div class="card">
+      <h3>The Adoption Funnel</h3>
+      <div class="funnel">
+        <div class="funnel-stage" style="--width: 100%">
+          <div class="funnel-bar"></div>
+          <div class="funnel-info">
+            <strong>Awareness</strong>
+            <span>"I heard we have a PTO bot"</span>
+          </div>
+        </div>
+        <div class="funnel-stage" style="--width: 70%">
+          <div class="funnel-bar"></div>
+          <div class="funnel-info">
+            <strong>Activation</strong>
+            <span>First successful interaction</span>
+          </div>
+        </div>
+        <div class="funnel-stage" style="--width: 50%">
+          <div class="funnel-bar"></div>
+          <div class="funnel-info">
+            <strong>Engagement</strong>
+            <span>Completes a full task</span>
+          </div>
+        </div>
+        <div class="funnel-stage" style="--width: 35%">
+          <div class="funnel-bar"></div>
+          <div class="funnel-info">
+            <strong>Retention</strong>
+            <span>Comes back for next request</span>
+          </div>
+        </div>
+        <div class="funnel-stage" style="--width: 20%">
+          <div class="funnel-bar"></div>
+          <div class="funnel-info">
+            <strong>Advocacy</strong>
+            <span>Tells a coworker</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Targets by Phase</h3>
+      <table class="metrics-table">
+        <thead><tr><th>Metric</th><th>Pilot</th><th>General Availability</th></tr></thead>
+        <tbody>
+          <tr><td>Activation rate</td><td>&ge; 50%</td><td>&ge; 40%</td></tr>
+          <tr><td>Task completion</td><td>&ge; 70%</td><td>&ge; 80%</td></tr>
+          <tr><td>Avg conversation turns</td><td>&le; 5</td><td>&le; 4</td></tr>
+          <tr><td>Return rate (30d)</td><td>&ge; 30%</td><td>&ge; 50%</td></tr>
+          <tr><td>Channel shift (chat vs. old process)</td><td>&ge; 10%</td><td>&ge; 30%</td></tr>
+          <tr><td>HR ticket deflection</td><td>&mdash;</td><td>&ge; 25%</td></tr>
+          <tr><td>NPS</td><td>&ge; 50</td><td>&ge; 70</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Launch Plan -->
+  <section class="phase" id="launch-plan">
+    <div class="phase-num">Value</div>
+    <h2>Launch Plan</h2>
+    <p class="phase-intro">Don't launch to everyone on day one. Expand in concentric circles.</p>
+
+    <div class="card">
+      <h3>Launch Timeline</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-label">Week 1-2</div>
+            <h4>Closed Pilot</h4>
+            <p>15-20 people from 2-3 teams. Watch every conversation. Daily Slack check-in. Goal: find the top 5 failure modes.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-label">Week 3-4</div>
+            <h4>Open Pilot</h4>
+            <p>One full department. Track activation (&ge;50%) and completion (&ge;70%). Fix top 3 issues from closed pilot.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-label">Month 2</div>
+            <h4>Expand &amp; Iterate</h4>
+            <p>3-5 departments. Add Slack/Teams integration. Measure channel shift and HR ticket deflection.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-label">Month 3+</div>
+            <h4>General Availability</h4>
+            <p>Org-wide rollout. HR endorsement. Deprecate redundant FAQ pages. Target: 30%+ channel shift.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+       PART III: HOW — BUILD IT
+       ============================================ -->
+
+  <div class="section-group" id="how-group">
+    <div class="section-group-label how">Part III</div>
+    <h2>How to Build It</h2>
+    <p>The technical guide. From the agent's instruction file to tool design, architecture, and testing.</p>
+  </div>
+
+  <!-- Instruction File -->
+  <section class="phase" id="instruction-file">
+    <div class="phase-num">Build</div>
+    <h2>The Instruction File</h2>
+    <p class="phase-intro">The <code>.md</code> file is the agent's instruction manual &mdash; the single most important file you'll write. Everything the agent does flows from this document.</p>
+
+    <div class="card">
+      <h3>What Goes In It</h3>
+      <div class="md-anatomy">
+        <div class="md-section">
+          <div class="md-section-label">Identity</div>
+          <div class="md-section-desc">Who the agent is, who it serves, what it does</div>
+        </div>
+        <div class="md-section">
+          <div class="md-section-label">Context Variables</div>
+          <div class="md-section-desc">Dynamic runtime data: <code>{{TODAY}}</code>, <code>{{EMPLOYEE_NAME}}</code>, <code>{{EMPLOYEE_TYPE}}</code></div>
+        </div>
+        <div class="md-section">
+          <div class="md-section-label">Capabilities</div>
+          <div class="md-section-desc">Every tool listed with <em>when</em> to use it, not just <em>what</em> it does</div>
+        </div>
+        <div class="md-section">
+          <div class="md-section-label">Boundaries</div>
+          <div class="md-section-desc">What the agent refuses and how it handles those requests</div>
+        </div>
+        <div class="md-section">
+          <div class="md-section-label">Decision Rules</div>
+          <div class="md-section-desc">If/then logic: contractor &rarr; unpaid only, low balance &rarr; suggest alternatives</div>
+        </div>
+        <div class="md-section">
+          <div class="md-section-label">Tone &amp; Format</div>
+          <div class="md-section-desc">How to sound (specific, not "be professional") and exact output templates</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card code-card">
+      <div class="code-header">
+        <span class="code-dot red"></span>
+        <span class="code-dot yellow"></span>
+        <span class="code-dot green"></span>
+        <span class="code-title">system-prompt.md</span>
+      </div>
+      <pre><code><span class="code-comment"># Time-Off Assistant &mdash; System Prompt</span>
+
+<span class="code-heading">## Identity</span>
+You are a time-off assistant for {{COMPANY}}.
+You help employees check leave balances, plan time off,
+and submit requests through Workday.
+
+<span class="code-heading">## Tool Ordering Rules</span>
+- NEVER call <span class="code-fn">submit_time_off_request</span> without first
+  calling <span class="code-fn">check_date_conflicts</span>
+- ALWAYS call <span class="code-fn">get_leave_balances</span> before presenting
+  a submission summary
+
+<span class="code-heading">## Boundaries &mdash; Do Not Handle</span>
+- Medical leave / FMLA &rarr; "Please contact HR directly"
+- Payroll questions &rarr; "Reach out to payroll"
+- Other employees' balances &rarr; "I can only access your info"
+
+<span class="code-heading">## Decision Rules</span>
+- IF contractor &rarr; only offer unpaid time off
+- IF balance &lt; request &rarr; explain, suggest alternatives
+- IF dates include holidays &rarr; exclude from PTO count</code></pre>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-icon">&#128161;</div>
+      <div class="callout-body">
+        <strong>This file is your biggest lever.</strong> Prompt engineering isn't magic &mdash; it's writing clear instructions. A well-written .md file eliminates entire categories of bugs without writing any code.
+      </div>
+    </div>
+  </section>
+
+  <!-- Tool Design -->
+  <section class="phase" id="tool-design">
+    <div class="phase-num">Build</div>
+    <h2>Tool Design</h2>
+    <p class="phase-intro">Tools are how the agent interacts with your systems. Design them like good APIs &mdash; each one does one thing well.</p>
+
+    <div class="principles-grid">
+      <div class="principle-card">
+        <div class="principle-num">1</div>
+        <h4>One Tool, One Job</h4>
+        <div class="principle-compare">
+          <div class="bad"><span class="label-bad">&#10007;</span><code>submit_time_off(auto_check=true)</code></div>
+          <div class="good"><span class="label-good">&#10003;</span><code>check_conflicts()</code> then <code>submit()</code></div>
+        </div>
+        <p>The agent should decide <em>whether</em> to check, not have it hidden.</p>
+      </div>
+      <div class="principle-card">
+        <div class="principle-num">2</div>
+        <h4>Return Data, Not Decisions</h4>
+        <div class="principle-compare">
+          <div class="bad"><span class="label-bad">&#10007;</span><code>&rarr; "Employee is eligible"</code></div>
+          <div class="good"><span class="label-good">&#10003;</span><code>&rarr; {eligible: true, types: [...]}</code></div>
+        </div>
+        <p>The agent interprets. The tool just reports facts.</p>
+      </div>
+      <div class="principle-card">
+        <div class="principle-num">3</div>
+        <h4>Actions Return Updated State</h4>
+        <div class="principle-compare">
+          <div class="bad"><span class="label-bad">&#10007;</span><code>&rarr; {success: true}</code></div>
+          <div class="good"><span class="label-good">&#10003;</span><code>&rarr; {id: "REQ-001", balance_after: ...}</code></div>
+        </div>
+        <p>No second call needed to see what happened.</p>
+      </div>
+      <div class="principle-card">
+        <div class="principle-num">4</div>
+        <h4>Name for What, Not How</h4>
+        <div class="principle-compare">
+          <div class="bad"><span class="label-bad">&#10007;</span><code>workday_api_get_v2_absence()</code></div>
+          <div class="good"><span class="label-good">&#10003;</span><code>get_leave_balances()</code></div>
+        </div>
+        <p>If you swap to BambooHR tomorrow, the prompt shouldn't change.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Tool Inventory &mdash; Read vs. Write</h3>
+      <table class="tool-table">
+        <thead>
+          <tr><th>Tool</th><th>Type</th><th>Risk</th><th>Needs Confirmation?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>get_employee_profile</code></td><td><span class="tag blue">Read</span></td><td>None</td><td>No</td></tr>
+          <tr><td><code>get_leave_balances</code></td><td><span class="tag blue">Read</span></td><td>None</td><td>No</td></tr>
+          <tr><td><code>check_date_conflicts</code></td><td><span class="tag blue">Read</span></td><td>None</td><td>No</td></tr>
+          <tr><td><code>get_company_holidays</code></td><td><span class="tag blue">Read</span></td><td>None</td><td>No</td></tr>
+          <tr><td><code>get_team_calendar</code></td><td><span class="tag blue">Read</span></td><td>Low</td><td>No</td></tr>
+          <tr class="highlight-row"><td><code>submit_time_off_request</code></td><td><span class="tag red">Write</span></td><td><strong>High</strong></td><td><strong>YES</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="table-note">The rule: <strong>reads are free, writes need human confirmation.</strong></p>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="phase" id="architecture">
+    <div class="phase-num">Build</div>
+    <h2>Architecture: One Agent or Many?</h2>
+    <p class="phase-intro">Start with one agent. Only split into multiple when you have a concrete reason &mdash; not because it sounds more sophisticated.</p>
+
+    <div class="card">
+      <h3>Common Patterns</h3>
+      <div class="topology-grid">
+        <div class="topology-card">
+          <div class="topology-diagram">
+            <div class="topo-node main">Router</div>
+            <div class="topo-arrows">
+              <div class="topo-arrow">&darr;</div>
+              <div class="topo-arrow">&darr;</div>
+              <div class="topo-arrow">&darr;</div>
+            </div>
+            <div class="topo-row">
+              <div class="topo-node sub">A</div>
+              <div class="topo-node sub">B</div>
+              <div class="topo-node sub">C</div>
+            </div>
+          </div>
+          <h4>Router + Specialists</h4>
+          <p>Multiple distinct domains. "Reset password" &rarr; IT, "Check PTO" &rarr; HR.</p>
+        </div>
+        <div class="topology-card">
+          <div class="topology-diagram">
+            <div class="topo-node main">Planner</div>
+            <div class="topo-arrows"><div class="topo-arrow">&darr;</div></div>
+            <div class="topo-node sub wide">Executor</div>
+          </div>
+          <h4>Planner + Executor</h4>
+          <p>One agent plans, another executes. Safety through separation.</p>
+        </div>
+        <div class="topology-card">
+          <div class="topology-diagram">
+            <div class="topo-row chain">
+              <div class="topo-node sub">A</div>
+              <div class="topo-chain-arrow">&rarr;</div>
+              <div class="topo-node sub">B</div>
+              <div class="topo-chain-arrow">&rarr;</div>
+              <div class="topo-node sub">C</div>
+            </div>
+          </div>
+          <h4>Chain (Pipeline)</h4>
+          <p>Sequential steps. Classify &rarr; extract &rarr; execute &rarr; format.</p>
+        </div>
+        <div class="topology-card">
+          <div class="topology-diagram">
+            <div class="topo-node main">Supervisor</div>
+            <div class="topo-arrows">
+              <div class="topo-arrow">&darr;</div>
+              <div class="topo-arrow">&darr;</div>
+              <div class="topo-arrow">&darr;</div>
+            </div>
+            <div class="topo-row">
+              <div class="topo-node sub">W1</div>
+              <div class="topo-node sub">W2</div>
+              <div class="topo-node sub">W3</div>
+            </div>
+          </div>
+          <h4>Supervisor + Workers</h4>
+          <p>Parallel research or analysis. Fan out, collect, combine.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>When to Split</h3>
+      <table class="decision-table">
+        <thead><tr><th>Factor</th><th>One Agent</th><th>Multiple Agents</th></tr></thead>
+        <tbody>
+          <tr><td>Number of tools</td><td>&le; 10</td><td>&gt; 10 or different access levels</td></tr>
+          <tr><td>Response time needed</td><td>&lt; 2 seconds</td><td>&gt; 3 seconds OK</td></tr>
+          <tr><td>Security scopes</td><td>Same access</td><td>Different access levels</td></tr>
+          <tr><td>Conversation shape</td><td>Linear</td><td>Branching / parallel</td></tr>
+          <tr><td>Team ownership</td><td>One team</td><td>Multiple teams</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout insight">
+      <div class="callout-icon">&#128270;</div>
+      <div class="callout-body">
+        <strong>The time-off agent is a single-agent use case.</strong> 6 tools, one user's data, linear conversation. Multi-agent would add complexity for zero benefit here.
+      </div>
+    </div>
+  </section>
+
+  <!-- Agent Work Cycles -->
+  <section class="phase" id="agent-work-cycles">
+    <div class="phase-num">Build</div>
+    <h2>Agent Work Cycles</h2>
+    <p class="phase-intro">What makes an agent different from a one-shot AI call? Loops. The agent thinks, acts, sees the result, and repeats until the job is done.</p>
+
+    <div class="loop-types">
+      <div class="loop-card">
+        <div class="loop-icon">&#128260;</div>
+        <h4>Think-then-Act <span class="loop-tag">Core</span></h4>
+        <p>Think &rarr; call a tool &rarr; read the result &rarr; think again &rarr; respond. <strong>The default behavior.</strong></p>
+        <div class="loop-meta">
+          <span>Cap: <strong>8-10 calls/turn</strong></span>
+          <span>Built into SDK</span>
+        </div>
+      </div>
+      <div class="loop-card">
+        <div class="loop-icon">&#128172;</div>
+        <h4>Conversation <span class="loop-tag">Multi-turn</span></h4>
+        <p>User &rarr; agent &rarr; user &rarr; agent. Memory maintained across turns.</p>
+        <div class="loop-meta">
+          <span>Timeout: <strong>30 min</strong></span>
+          <span>Summarize after turn 8</span>
+        </div>
+      </div>
+      <div class="loop-card">
+        <div class="loop-icon">&#128257;</div>
+        <h4>Retry <span class="loop-tag">Self-correction</span></h4>
+        <p>Try &rarr; check if it worked &rarr; retry if not. For error recovery.</p>
+        <div class="loop-meta">
+          <span>Cap: <strong>3 retries max</strong></span>
+          <span>Then hand off to a human</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card example-card">
+      <div class="example-badge">Running Example</div>
+      <h3>One Turn in Action</h3>
+      <div class="loop-sequence">
+        <div class="loop-step">
+          <div class="loop-step-label">User</div>
+          <div class="loop-step-content">"I want to take July 1-3 off"</div>
+        </div>
+        <div class="loop-step agent">
+          <div class="loop-step-label">Think</div>
+          <div class="loop-step-content">Need to check conflicts first</div>
+        </div>
+        <div class="loop-step tool">
+          <div class="loop-step-label">Tool</div>
+          <div class="loop-step-content"><code>check_date_conflicts()</code> &rarr; July 3 = Independence Day</div>
+        </div>
+        <div class="loop-step agent">
+          <div class="loop-step-label">Think</div>
+          <div class="loop-step-content">Should check balance too</div>
+        </div>
+        <div class="loop-step tool">
+          <div class="loop-step-label">Tool</div>
+          <div class="loop-step-content"><code>get_leave_balances()</code> &rarr; 12 days available</div>
+        </div>
+        <div class="loop-step agent">
+          <div class="loop-step-label">Respond</div>
+          <div class="loop-step-content">Summary: 2 PTO days (holiday excluded), 10 days remaining. Submit?</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Conversation Flow -->
+  <section class="phase" id="conversation-flow">
+    <div class="phase-num">Build</div>
+    <h2>Conversation Flow (State Machine)</h2>
+    <p class="phase-intro">Hard rules around flexible AI. The state machine defines what the agent <em>is allowed to do</em> at every point in the conversation &mdash; no exceptions.</p>
+
+    <div class="card">
+      <h3>Flow Chart</h3>
+      <div class="state-diagram">
+        <div class="state-row">
+          <div class="state-node start">START</div>
+        </div>
+        <div class="state-arrow">&darr; First message</div>
+        <div class="state-row">
+          <div class="state-node loaded">PROFILE LOADED</div>
+        </div>
+        <div class="state-branch">
+          <div class="state-arrow">&swarr;</div>
+          <div class="state-arrow">&darr;</div>
+          <div class="state-arrow">&searr;</div>
+        </div>
+        <div class="state-row three">
+          <div class="state-node inquiry">BALANCE<br>INQUIRY</div>
+          <div class="state-node planning">DATE<br>PLANNING</div>
+          <div class="state-node status">STATUS<br>CHECK</div>
+        </div>
+        <div class="state-arrow">&darr; Dates validated</div>
+        <div class="state-row">
+          <div class="state-node ready">PLAN READY</div>
+        </div>
+        <div class="state-branch two">
+          <div class="state-confirm-label">"Yes" &darr;</div>
+          <div class="state-cancel-label">&darr; "No"</div>
+        </div>
+        <div class="state-row two">
+          <div class="state-node confirmed">CONFIRMED</div>
+          <div class="state-node cancelled">CANCELLED</div>
+        </div>
+        <div class="state-arrow">&darr; Tool called</div>
+        <div class="state-row">
+          <div class="state-node submitted">SUBMITTED &#10003;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>What This Enforces</h3>
+      <div class="enforce-list">
+        <div class="enforce-item">
+          <div class="enforce-num">1</div>
+          <div class="enforce-text"><code>submit_time_off_request</code> is ONLY callable in <strong>CONFIRMED</strong> state</div>
+        </div>
+        <div class="enforce-item">
+          <div class="enforce-num">2</div>
+          <div class="enforce-text"><strong>PLAN_READY</strong> requires that <code>check_date_conflicts</code> was called first</div>
+        </div>
+        <div class="enforce-item">
+          <div class="enforce-num">3</div>
+          <div class="enforce-text"><strong>CONFIRMED</strong> requires explicit user confirmation (the agent can't assume "yes")</div>
+        </div>
+        <div class="enforce-item">
+          <div class="enforce-num">4</div>
+          <div class="enforce-text">Read tools work in ALL states; write tools only work in <strong>CONFIRMED</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Human Approval -->
+  <section class="phase" id="human-approval">
+    <div class="phase-num">Build</div>
+    <h2>When to Ask a Human</h2>
+    <p class="phase-intro">Not every action needs human approval. But every irreversible action does.</p>
+
+    <div class="card">
+      <h3>The Approval Spectrum</h3>
+      <div class="hitl-spectrum">
+        <div class="hitl-level">
+          <div class="hitl-bar auto"></div>
+          <div class="hitl-label">Fully Autonomous</div>
+          <div class="hitl-desc">Check balance, show holidays &mdash; no risk, just go</div>
+        </div>
+        <div class="hitl-level">
+          <div class="hitl-bar propose"></div>
+          <div class="hitl-label">Propose + Approve</div>
+          <div class="hitl-desc">Submit PTO request &mdash; show summary, wait for "yes"</div>
+        </div>
+        <div class="hitl-level">
+          <div class="hitl-bar assist"></div>
+          <div class="hitl-label">Assist</div>
+          <div class="hitl-desc">Interpret policy ambiguity &mdash; offer guidance, let human decide</div>
+        </div>
+        <div class="hitl-level">
+          <div class="hitl-bar escalate"></div>
+          <div class="hitl-label">Escalate</div>
+          <div class="hitl-desc">FMLA / medical leave &mdash; hand off to HR completely</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Good vs. Bad Confirmation Design</h3>
+      <div class="confirm-compare">
+        <div class="confirm-bad">
+          <div class="confirm-header bad-header">&#10007; Dangerous</div>
+          <div class="confirm-body">Done! I submitted your PTO request.</div>
+        </div>
+        <div class="confirm-good">
+          <div class="confirm-header good-header">&#10003; Safe</div>
+          <div class="confirm-body">
+            &#128203; <strong>Time Off Request Summary</strong><br>
+            &bull; Type: PTO<br>
+            &bull; Dates: Jul 14 &rarr; Jul 18 (5 days, 40 hours)<br>
+            &bull; Balance after: 7 days remaining<br>
+            &bull; Approver: Jordan Park<br><br>
+            Ready to submit? <em>(This will notify Jordan)</em>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testing -->
+  <section class="phase" id="testing">
+    <div class="phase-num">Build</div>
+    <h2>Testing Framework</h2>
+    <p class="phase-intro">If you don't have an automated test for it, it will break and nobody will notice until a real user complains.</p>
+
+    <div class="card">
+      <h3>The Testing Pyramid</h3>
+      <div class="eval-pyramid">
+        <div class="pyramid-level level-4">
+          <div class="pyramid-block">End-to-End Flows</div>
+          <div class="pyramid-meta">Expensive &bull; Before releases</div>
+        </div>
+        <div class="pyramid-level level-3">
+          <div class="pyramid-block">Multi-Turn Conversations</div>
+          <div class="pyramid-meta">Moderate cost &bull; After prompt changes</div>
+        </div>
+        <div class="pyramid-level level-2">
+          <div class="pyramid-block">Single-Turn Checks</div>
+          <div class="pyramid-meta">Cheap &bull; On every change</div>
+        </div>
+        <div class="pyramid-level level-1">
+          <div class="pyramid-block">Tool Unit Tests</div>
+          <div class="pyramid-meta">Cheapest &bull; On every code commit</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Key Quality Metrics</h3>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">&ge; 98%</div>
+          <div class="metric-label">Test pass rate</div>
+        </div>
+        <div class="metric-card critical">
+          <div class="metric-value">100%</div>
+          <div class="metric-label">Safety tests</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">&le; 4</div>
+          <div class="metric-label">Avg turns to finish</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">0%</div>
+          <div class="metric-label">Made-up-info rate</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+       PART IV: CONSIDERATIONS
+       ============================================ -->
+
+  <div class="section-group" id="consider-group">
+    <div class="section-group-label consider">Part IV</div>
+    <h2>What Can Go Wrong</h2>
+    <p>Model costs, accuracy, safety, security, bias, latency, and trust are all real concerns. Address them upfront, not after launch.</p>
+  </div>
+
+  <!-- Considerations overview -->
+  <section class="phase" id="considerations">
+    <div class="phase-num">Risk</div>
+    <h2>Risks &amp; Governance</h2>
+    <p class="phase-intro">Every AI project has these seven risks. The question isn't whether they apply &mdash; it's how you mitigate each one.</p>
+
+    <div class="consider-grid">
+      <div class="consider-card cost">
+        <h4>&#128176; Cost Overruns</h4>
+        <p>Token costs can surprise you. A chatty agent that doesn't summarize history will send growing context every turn, running up the bill.</p>
+        <div class="consider-actions">
+          <span>&#10003; Use Haiku for routine tasks ($0.01/request vs $0.13)</span>
+          <span>&#10003; Enable prompt caching (90% input savings)</span>
+          <span>&#10003; Cap tool calls per turn (8-10 max)</span>
+          <span>&#10003; Summarize after 8 turns to control context growth</span>
+          <span>&#10003; Set per-user daily cost limits</span>
+        </div>
+      </div>
+
+      <div class="consider-card accuracy">
+        <h4>&#127919; Accuracy &amp; Hallucinations</h4>
+        <p>The agent might make up leave balances, invent policies, or miscount work days. In HR, wrong information has real consequences.</p>
+        <div class="consider-actions">
+          <span>&#10003; Never let the agent state facts without calling a tool first</span>
+          <span>&#10003; Return raw data from tools, let the agent format it</span>
+          <span>&#10003; Test edge cases: holidays, weekends, zero balances</span>
+          <span>&#10003; Log every claim for audit &mdash; trace back to source data</span>
+          <span>&#10003; Run eval suite after every prompt change (target: 0% hallucination)</span>
+        </div>
+      </div>
+
+      <div class="consider-card latency">
+        <h4>&#9889; Latency &amp; Performance</h4>
+        <p>Each AI call takes 1-3 seconds. A 4-turn conversation with tool calls = 8-15 seconds. Users expect instant, not "processing..."</p>
+        <div class="consider-actions">
+          <span>&#10003; Stream responses (show text as it generates)</span>
+          <span>&#10003; Use Haiku for speed (2-3x faster than Opus)</span>
+          <span>&#10003; Batch tool calls where possible</span>
+          <span>&#10003; Show typing indicators so users know it's working</span>
+          <span>&#10003; Target: under 5 seconds for full response</span>
+        </div>
+      </div>
+
+      <div class="consider-card safety">
+        <h4>&#128737; Safety &amp; Guardrails</h4>
+        <p>An agent that submits PTO without confirmation, accesses other employees' data, or handles medical leave it shouldn't &mdash; that's not a bug, it's a liability.</p>
+        <div class="consider-actions">
+          <span>&#10003; Server-side rules the agent literally cannot bypass</span>
+          <span>&#10003; State machine: write actions only after explicit confirmation</span>
+          <span>&#10003; Hard boundaries in the prompt for out-of-scope requests</span>
+          <span>&#10003; Rate limits: cap at 5 submissions/day per employee</span>
+          <span>&#10003; 100% pass rate on safety assertions &mdash; zero tolerance</span>
+        </div>
+      </div>
+
+      <div class="consider-card security">
+        <h4>&#128274; Security &amp; Data Privacy</h4>
+        <p>The agent sees sensitive employee data: names, balances, manager relationships. Every interaction is a potential data exposure.</p>
+        <div class="consider-actions">
+          <span>&#10003; SSO authentication &mdash; verify identity before any data access</span>
+          <span>&#10003; Scope tools to the authenticated user only</span>
+          <span>&#10003; Strip personal info from logs (output filter layer)</span>
+          <span>&#10003; Never put employee data in URLs or query strings</span>
+          <span>&#10003; Audit trail: who accessed what, when, through which tool</span>
+        </div>
+      </div>
+
+      <div class="consider-card bias">
+        <h4>&#9878; Bias &amp; Fairness</h4>
+        <p>Could the agent treat contractors differently than it should? Respond differently to different names? Apply policy inconsistently?</p>
+        <div class="consider-actions">
+          <span>&#10003; Test with diverse employee types: FT, PT, contractor</span>
+          <span>&#10003; Decision rules in code, not in the AI's discretion</span>
+          <span>&#10003; Regular audits: sample conversations across demographics</span>
+          <span>&#10003; Policy interpretation goes to HR, not the agent</span>
+          <span>&#10003; Consistent formatting for all users (same summary template)</span>
+        </div>
+      </div>
+
+      <div class="consider-card trust" style="grid-column: span 2;">
+        <h4>&#129309; Trust &amp; Transparency</h4>
+        <p>Employees won't use an AI they don't trust. Trust comes from accuracy, transparency, and the ability to verify. If the agent makes one wrong claim about their balance, they'll never use it again.</p>
+        <div class="consider-actions">
+          <span>&#10003; Always show source data: "Based on your Workday profile, you have 12 days remaining"</span>
+          <span>&#10003; Show full summary before any action &mdash; no surprises</span>
+          <span>&#10003; Provide a "see details" option that shows exactly what tools were called</span>
+          <span>&#10003; Make it easy to escalate to a human at any point</span>
+          <span>&#10003; Start with low-risk tasks (balance checks) before enabling submissions</span>
+          <span>&#10003; Publish accuracy metrics internally: "99.2% accuracy on balance lookups this month"</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Risk Profile: Time-Off Agent</h3>
+      <table class="decision-table">
+        <thead><tr><th>Risk Area</th><th>Severity</th><th>Primary Mitigation</th></tr></thead>
+        <tbody>
+          <tr><td>Cost</td><td><span class="tag green">Low</span></td><td>Haiku + caching = $0.01/request</td></tr>
+          <tr><td>Accuracy</td><td><span class="tag blue">Medium</span></td><td>All facts come from tool calls, never generated</td></tr>
+          <tr><td>Latency</td><td><span class="tag green">Low</span></td><td>Haiku + streaming = 3-5 second responses</td></tr>
+          <tr><td>Safety</td><td><span class="tag red">High</span></td><td>State machine + server-side confirmation gate</td></tr>
+          <tr><td>Security</td><td><span class="tag blue">Medium</span></td><td>SSO + scoped to authenticated user only</td></tr>
+          <tr><td>Bias</td><td><span class="tag green">Low</span></td><td>Policy rules in code, not AI discretion</td></tr>
+          <tr><td>Trust</td><td><span class="tag blue">Medium</span></td><td>Show source data, full summary before actions</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Guardrails -->
+  <section class="phase" id="guardrails">
+    <div class="phase-num">Risk</div>
+    <h2>Guardrails &mdash; Layered Defense</h2>
+    <p class="phase-intro">Don't rely on any single layer. Stack them: server-side rules the agent can't bypass, prompt rules it almost always follows, output filters that catch what slips through, and monitoring that watches everything.</p>
+
+    <div class="guardrail-stack">
+      <div class="guardrail-layer layer-1">
+        <div class="guardrail-label">Layer 1 &mdash; Server-Side Rules (Cannot Be Bypassed)</div>
+        <div class="guardrail-desc">Hard-coded in your backend. The agent literally cannot violate these.</div>
+        <div class="guardrail-examples">
+          <span>Balance check before submit</span>
+          <span>Rate limiting (5/day)</span>
+          <span>Confirmation flag required</span>
+        </div>
+      </div>
+      <div class="guardrail-layer layer-2">
+        <div class="guardrail-label">Layer 2 &mdash; Prompt Rules (~97-99% Reliable)</div>
+        <div class="guardrail-desc">Instructions in the system prompt. Followed almost always, but not guaranteed.</div>
+        <div class="guardrail-examples">
+          <span>Show summary before submit</span>
+          <span>Don't assume confirmation</span>
+          <span>Mention holidays proactively</span>
+        </div>
+      </div>
+      <div class="guardrail-layer layer-3">
+        <div class="guardrail-label">Layer 3 &mdash; Output Filters (Safety Net)</div>
+        <div class="guardrail-desc">Check the agent's response before the user sees it.</div>
+        <div class="guardrail-examples">
+          <span>Hide personal info (SSN, etc.)</span>
+          <span>Strip raw code from responses</span>
+          <span>Sanitize any links</span>
+        </div>
+      </div>
+      <div class="guardrail-layer layer-4">
+        <div class="guardrail-label">Layer 4 &mdash; Monitoring (After the Fact)</div>
+        <div class="guardrail-desc">Async review. Flag sessions for human inspection.</div>
+        <div class="guardrail-examples">
+          <span>High tool call count (&gt;15)</span>
+          <span>Rapid submissions</span>
+          <span>Error rate spikes</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Monitoring -->
+  <section class="phase" id="monitoring">
+    <div class="phase-num">Risk</div>
+    <h2>Monitoring</h2>
+    <p class="phase-intro">If you can't see what the agent did and why, you can't fix it when it breaks. Log everything.</p>
+
+    <div class="card code-card">
+      <div class="code-header">
+        <span class="code-dot red"></span>
+        <span class="code-dot yellow"></span>
+        <span class="code-dot green"></span>
+        <span class="code-title">Structured log per turn</span>
+      </div>
+      <pre><code>{
+  <span class="code-key">"session_id"</span>: "sess_abc123",
+  <span class="code-key">"turn"</span>: 3,
+  <span class="code-key">"state"</span>: "DATE_PLANNING",
+  <span class="code-key">"tools_called"</span>: [
+    "check_date_conflicts",
+    "get_leave_balances"
+  ],
+  <span class="code-key">"latency_ms"</span>: 1150,
+  <span class="code-key">"tokens"</span>: { "input": 2400, "output": 380 },
+  <span class="code-key">"cost_usd"</span>: 0.004,
+  <span class="code-key">"guardrails"</span>: {
+    "personal_info_redacted": false,
+    "scope_violation": false
+  }
+}</code></pre>
+    </div>
+
+    <div class="card">
+      <h3>Three Dashboards</h3>
+      <div class="dash-grid">
+        <div class="dash-card">
+          <div class="dash-icon">&#9889;</div>
+          <h4>Real-time (Ops)</h4>
+          <ul>
+            <li>Active sessions</li>
+            <li>Response latency p95</li>
+            <li>Tool error rate</li>
+            <li>Daily token spend</li>
+          </ul>
+        </div>
+        <div class="dash-card">
+          <div class="dash-icon">&#128200;</div>
+          <h4>Daily (Product)</h4>
+          <ul>
+            <li>Sessions started / completed</li>
+            <li>Task completion rate</li>
+            <li>Cost per request trend</li>
+            <li>Escalation rate</li>
+          </ul>
+        </div>
+        <div class="dash-card">
+          <div class="dash-icon">&#128269;</div>
+          <h4>Weekly (Quality)</h4>
+          <ul>
+            <li>Test suite pass rate</li>
+            <li>Sampled conversation scores</li>
+            <li>Made-up-info incidents</li>
+            <li>User-reported issues</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Anti-Patterns -->
+  <section class="phase" id="anti-patterns">
+    <div class="phase-num">&#9888;</div>
+    <h2>Common Mistakes</h2>
+    <p class="phase-intro">Patterns that kill agent projects &mdash; from both the business and technical side.</p>
+
+    <div class="ap-grid">
+      <div class="ap-card">
+        <div class="ap-card-num">1</div>
+        <h4>AI for AI's Sake</h4>
+        <p class="ap-symptom">Built an agent because "we should have AI." No clear problem or ROI.</p>
+        <p class="ap-fix"><strong>Fix:</strong> Start from the pain. If nobody's frustrated, don't build it.</p>
+      </div>
+      <div class="ap-card">
+        <div class="ap-card-num">2</div>
+        <h4>"Just Add Another Agent"</h4>
+        <p class="ap-symptom">7 agents for a task that needs 1. Complexity explodes.</p>
+        <p class="ap-fix"><strong>Fix:</strong> Start with 1. Split only for concrete reasons.</p>
+      </div>
+      <div class="ap-card">
+        <div class="ap-card-num">3</div>
+        <h4>Skipping the Cost Math</h4>
+        <p class="ap-symptom">Launched with Opus, got a $50K/mo surprise bill.</p>
+        <p class="ap-fix"><strong>Fix:</strong> Run token estimates before you build. Start with Haiku.</p>
+      </div>
+      <div class="ap-card">
+        <div class="ap-card-num">4</div>
+        <h4>"The AI Will Figure It Out"</h4>
+        <p class="ap-symptom">No state machine, no guardrails, the prompt does everything.</p>
+        <p class="ap-fix"><strong>Fix:</strong> Use hard-coded rules for decisions that should never vary.</p>
+      </div>
+      <div class="ap-card">
+        <div class="ap-card-num">5</div>
+        <h4>Over-Automation</h4>
+        <p class="ap-symptom">Agent submits, modifies, cancels &mdash; all without asking.</p>
+        <p class="ap-fix"><strong>Fix:</strong> Every irreversible action gets its own confirmation.</p>
+      </div>
+      <div class="ap-card">
+        <div class="ap-card-num">6</div>
+        <h4>The Testing Desert</h4>
+        <p class="ap-symptom">"It works when I test it manually."</p>
+        <p class="ap-fix"><strong>Fix:</strong> Write the test BEFORE the feature. Run evals on every prompt change.</p>
+      </div>
+      <div class="ap-card">
+        <div class="ap-card-num">7</div>
+        <h4>"Works on Demo Data"</h4>
+        <p class="ap-symptom">Beautiful demo. Breaks on first real user.</p>
+        <p class="ap-fix"><strong>Fix:</strong> Test with messy data early. Unicode names, negative balances, edge cases.</p>
+      </div>
+      <div class="ap-card">
+        <div class="ap-card-num">8</div>
+        <h4>Ignoring Trust</h4>
+        <p class="ap-symptom">Agent is accurate but employees don't use it. Never showed its work.</p>
+        <p class="ap-fix"><strong>Fix:</strong> Show source data, cite tools, make escalation easy. Trust is earned.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Checklist -->
+  <section class="phase" id="checklist">
+    <div class="phase-num">&#10003;</div>
+    <h2>Ship Checklist</h2>
+    <p class="phase-intro">Use this for every new agent project.</p>
+
+    <div class="card checklist-card">
+      <div class="cl-item"><span class="cl-box"></span> <strong>Why:</strong> Clear business problem identified, users actually want this</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Why:</strong> Agent is the right solution (not a form, classifier, or workflow)</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Value:</strong> Cost-per-request estimated, ROI math checks out</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Value:</strong> Adoption metrics defined, launch plan in phases</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Build:</strong> Instruction file covers identity, capabilities, boundaries, tone</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Build:</strong> Tools do one thing each, reads vs. writes separated</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Build:</strong> Architecture justified (one agent vs. many)</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Build:</strong> State machine with explicit transitions and tool permissions</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Build:</strong> Human approval levels defined for every action</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Build:</strong> Testing framework with all 4 pyramid levels</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Risk:</strong> Cost, accuracy, latency, safety, security, bias, trust &mdash; all addressed</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Risk:</strong> Guardrails layered (server &rarr; prompt &rarr; output filter &rarr; monitoring)</div>
+      <div class="cl-item"><span class="cl-box"></span> <strong>Risk:</strong> Monitoring dashboards and structured logging in place</div>
+    </div>
+  </section>
+
+  <footer>
+    <p>The Agent Builder's Playbook &middot; Why &rarr; What &rarr; How &rarr; Considerations &middot; Built with the Time-Off Agent</p>
+  </footer>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>

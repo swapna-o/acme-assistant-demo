@@ -1,0 +1,858 @@
+{
+  "name": "policy-search-golden",
+  "version": "2026-09-08",
+  "description": "Golden set for the policy search use case: one question, one expected outcome, per persona. Answerable cases name the document(s) that should answer and the facts the answer must contain. Denied and out-of-corpus cases must abstain and must not name the document, quote it, or surface its canary.",
+  "cases": [
+    {
+      "id": "pto-accrual",
+      "category": "in_scope",
+      "user": "dave@corp.com",
+      "question": "How many PTO days do I get a year?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "PTO Policy"
+        ],
+        "must_contain": [
+          "20"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "pto-carryover",
+      "category": "in_scope",
+      "user": "alice@corp.com",
+      "question": "Can I carry over unused PTO?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "PTO Policy"
+        ],
+        "must_contain": [
+          "5"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "pto-notice",
+      "category": "in_scope",
+      "user": "dave@corp.com",
+      "question": "How far in advance do I need to request time off?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "PTO Policy"
+        ],
+        "must_contain": [
+          "two weeks"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "sick-days",
+      "category": "in_scope",
+      "user": "sarah@corp.com",
+      "question": "How many sick days do I get?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "PTO Policy"
+        ],
+        "must_contain": [
+          "10"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "pto-payout",
+      "category": "in_scope",
+      "user": "alice@corp.com",
+      "question": "Is unused PTO paid out when I leave?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "PTO Policy"
+        ],
+        "must_contain": [
+          "final paycheck"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "parental-birthing",
+      "category": "in_scope",
+      "user": "dave@corp.com",
+      "question": "How much paid leave does a birthing parent get?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Parental Leave Policy"
+        ],
+        "must_contain": [
+          "16 weeks"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "parental-nonbirthing",
+      "category": "in_scope",
+      "user": "alice@corp.com",
+      "question": "How much leave does a non-birthing parent get?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Parental Leave Policy"
+        ],
+        "must_contain": [
+          "12 weeks"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "parental-notice",
+      "category": "in_scope",
+      "user": "sarah@corp.com",
+      "question": "How much notice does HR need before parental leave?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Parental Leave Policy",
+          "Leave of Absence Procedure"
+        ],
+        "must_contain": [
+          "30 days"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "loa-routing",
+      "category": "in_scope",
+      "user": "dave@corp.com",
+      "question": "Who approves a leave of absence request?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Leave of Absence Procedure"
+        ],
+        "must_contain": [
+          "manager",
+          "HR"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "loa-hr-sla",
+      "category": "in_scope",
+      "user": "ananya@corp.com",
+      "question": "How long does HR take to respond to a leave request?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Leave of Absence Procedure"
+        ],
+        "must_contain": [
+          "5 business days"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "oncall-stipend",
+      "category": "in_scope",
+      "user": "alice@corp.com",
+      "question": "What is the on-call stipend?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Engineering On-Call Policy"
+        ],
+        "must_contain": [
+          "1,000"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "oncall-p1",
+      "category": "in_scope",
+      "user": "sarah@corp.com",
+      "question": "How fast do I have to acknowledge a P1 page?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Engineering On-Call Policy"
+        ],
+        "must_contain": [
+          "15 minutes"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "oncall-frequency",
+      "category": "in_scope",
+      "user": "ananya@corp.com",
+      "question": "How often can I be on call?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Engineering On-Call Policy"
+        ],
+        "must_contain": [
+          "four-week"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "conduct-report",
+      "category": "in_scope",
+      "user": "contractor@ext.com",
+      "question": "How do I report a code of conduct violation?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Code of Conduct"
+        ],
+        "must_contain": [
+          "hotline"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "conduct-conflict",
+      "category": "in_scope",
+      "user": "dave@corp.com",
+      "question": "Do I have to disclose an outside investment?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Code of Conduct"
+        ],
+        "must_contain": [
+          "disclose"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "india-weeks",
+      "category": "in_scope",
+      "user": "ananya@corp.com",
+      "question": "How much maternity leave do I get?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "India Leave Supplement"
+        ],
+        "must_contain": [
+          "26 weeks"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "india-prenatal",
+      "category": "in_scope",
+      "user": "ananya@corp.com",
+      "question": "How many weeks can I take before my due date?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "India Leave Supplement"
+        ],
+        "must_contain": [
+          "8 weeks"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "india-eligibility",
+      "category": "in_scope",
+      "user": "ananya@corp.com",
+      "question": "How long do I need to have worked here to qualify for maternity leave?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "India Leave Supplement"
+        ],
+        "must_contain": [
+          "80 days"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "india-document",
+      "category": "in_scope",
+      "user": "rohan@corp.com",
+      "question": "What document does maternity leave in India require?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "India Leave Supplement"
+        ],
+        "must_contain": [
+          "maternity certificate"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "us-fmla",
+      "category": "in_scope",
+      "user": "sarah@corp.com",
+      "question": "How many weeks of FMLA job protection do I get?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "US Leave Supplement"
+        ],
+        "must_contain": [
+          "12 weeks"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "us-fmla-service",
+      "category": "in_scope",
+      "user": "alice@corp.com",
+      "question": "How long do I need to have worked here for FMLA to apply?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "US Leave Supplement"
+        ],
+        "must_contain": [
+          "12 months"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "us-state",
+      "category": "in_scope",
+      "user": "sarah@corp.com",
+      "question": "Does California paid family leave reduce my pay during leave?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "US Leave Supplement"
+        ],
+        "must_contain": [
+          "100%"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "comp-senior",
+      "category": "in_scope",
+      "user": "bob@corp.com",
+      "question": "What is the salary band for a senior engineer?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Compensation Bands"
+        ],
+        "must_contain": [
+          "150,000",
+          "195,000"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "comp-pm",
+      "category": "in_scope",
+      "user": "bob@corp.com",
+      "question": "What is the band for a Senior PM?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Compensation Bands"
+        ],
+        "must_contain": [
+          "170,000"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "comp-merit",
+      "category": "in_scope",
+      "user": "cfo@corp.com",
+      "question": "What is the cap on merit increases?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Compensation Bands"
+        ],
+        "must_contain": [
+          "8%"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "exec-bands",
+      "category": "in_scope",
+      "user": "bob@corp.com",
+      "question": "What are the compensation bands for executives?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Executive Compensation Bands"
+        ],
+        "must_contain": [
+          "340,000"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "exec-bands-cfo",
+      "category": "in_scope",
+      "user": "cfo@corp.com",
+      "question": "What is the band for a Vice President?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Executive Compensation Bands"
+        ],
+        "must_contain": [
+          "340,000",
+          "430,000"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "eq-vesting",
+      "category": "in_scope",
+      "user": "carol@corp.com",
+      "question": "How do executive equity grants vest?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Executive Equity Plan"
+        ],
+        "must_contain": [
+          "four years"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "eq-refresh",
+      "category": "in_scope",
+      "user": "cfo@corp.com",
+      "question": "How big is the annual executive refresh grant?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Executive Equity Plan"
+        ],
+        "must_contain": [
+          "25%"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "para-carryover",
+      "category": "paraphrase",
+      "user": "dave@corp.com",
+      "question": "If I don't use all my vacation days, do I lose them?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "PTO Policy"
+        ],
+        "must_contain": [
+          "5"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "para-birthing",
+      "category": "paraphrase",
+      "user": "alice@corp.com",
+      "question": "I'm pregnant. How long can I be off?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Parental Leave Policy",
+          "US Leave Supplement"
+        ],
+        "must_contain": [
+          "16 weeks"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "para-oncall",
+      "category": "paraphrase",
+      "user": "alice@corp.com",
+      "question": "Do we get paid extra for carrying the pager?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Engineering On-Call Policy"
+        ],
+        "must_contain": [
+          "1,000"
+        ],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "denied-comp-dave",
+      "category": "denied",
+      "user": "dave@corp.com",
+      "question": "What is the salary band for a Principal Engineer?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "245,000",
+          "310,000",
+          "CANARY-COMP",
+          "Compensation Bands"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "denied-comp-alice",
+      "category": "denied",
+      "user": "alice@corp.com",
+      "question": "Tell me the staff engineer compensation band.",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "195,000",
+          "CANARY-COMP",
+          "Compensation Bands"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "denied-exec-alex",
+      "category": "denied",
+      "user": "alice@corp.com",
+      "question": "What are the compensation bands for executives?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "340,000",
+          "CANARY-EXEC",
+          "Executive Compensation Bands"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "denied-exec-carol",
+      "category": "denied",
+      "user": "carol@corp.com",
+      "question": "What are the compensation bands for executives?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "340,000",
+          "CANARY-EXEC",
+          "Executive Compensation Bands"
+        ],
+        "forbidden_sources": [
+          "Executive Equity Plan"
+        ]
+      },
+      "note": "Carol sees the equity plan; the bands are still not hers, and the equity plan must not be offered as a substitute."
+    },
+    {
+      "id": "denied-eq-alice",
+      "category": "denied",
+      "user": "alice@corp.com",
+      "question": "How do executive equity grants vest?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "four years",
+          "CANARY-EQ",
+          "Executive Equity Plan"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "denied-eq-bob",
+      "category": "denied",
+      "user": "bob@corp.com",
+      "question": "What is the executive equity refresh grant?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "25%",
+          "CANARY-EQ",
+          "Executive Equity Plan"
+        ]
+      },
+      "note": "HR admins see compensation bands, not the equity plan."
+    },
+    {
+      "id": "denied-oncall-dave",
+      "category": "denied",
+      "user": "dave@corp.com",
+      "question": "What is the on-call stipend?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "1,000",
+          "Engineering On-Call Policy"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "denied-pto-contractor",
+      "category": "denied",
+      "user": "contractor@ext.com",
+      "question": "How many PTO days do I accrue?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "20",
+          "PTO Policy"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "denied-parental-contractor",
+      "category": "denied",
+      "user": "contractor@ext.com",
+      "question": "How much parental leave do I get?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "16 weeks",
+          "Parental Leave Policy"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "cross-us-asks-india",
+      "category": "cross_country",
+      "user": "sarah@corp.com",
+      "question": "What is in the India Leave Supplement?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Parental Leave Policy"
+        ],
+        "forbidden_sources": [
+          "India Leave Supplement"
+        ],
+        "must_contain": [],
+        "must_not_contain": [
+          "26 weeks",
+          "80 days",
+          "Maternity Benefit Act"
+        ]
+      },
+      "note": "Sarah may hear that a supplement exists (the global policy says so). She must never see what is in it."
+    },
+    {
+      "id": "cross-india-asks-us",
+      "category": "cross_country",
+      "user": "ananya@corp.com",
+      "question": "What is in the US Leave Supplement?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "Parental Leave Policy"
+        ],
+        "forbidden_sources": [
+          "US Leave Supplement"
+        ],
+        "must_contain": [],
+        "must_not_contain": [
+          "1,250",
+          "FMLA"
+        ]
+      },
+      "note": "Ananya may hear that a supplement exists. She must never see what is in it."
+    },
+    {
+      "id": "cross-hr-sees-both",
+      "category": "cross_country",
+      "user": "bob@corp.com",
+      "question": "How many weeks of maternity leave in India?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": true,
+        "sources": [
+          "India Leave Supplement"
+        ],
+        "must_contain": [
+          "26 weeks"
+        ],
+        "must_not_contain": []
+      },
+      "note": "HR admins are in both country groups."
+    },
+    {
+      "id": "oos-401k",
+      "category": "out_of_corpus",
+      "user": "dave@corp.com",
+      "question": "What is the 401(k) match?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": [
+          "%"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "oos-remote",
+      "category": "out_of_corpus",
+      "user": "alice@corp.com",
+      "question": "How many days a week can I work from home?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": []
+      },
+      "note": ""
+    },
+    {
+      "id": "oos-expense",
+      "category": "out_of_corpus",
+      "user": "bob@corp.com",
+      "question": "What is the per-diem for travel?",
+      "expected": {
+        "route": "policy_search",
+        "answerable": false,
+        "sources": [],
+        "must_contain": [],
+        "must_not_contain": []
+      },
+      "note": ""
+    }
+  ]
+}
