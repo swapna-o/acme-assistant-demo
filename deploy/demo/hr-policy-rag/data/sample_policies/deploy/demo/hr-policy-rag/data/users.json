@@ -1,0 +1,44 @@
+{
+  "alice@corp.com": [
+    "all-employees",
+    "engineering",
+    "employees-us"
+  ],
+  "bob@corp.com": [
+    "all-employees",
+    "hr-admins",
+    "employees-us"
+  ],
+  "carol@corp.com": [
+    "all-employees",
+    "execs",
+    "leadership",
+    "employees-us"
+  ],
+  "dave@corp.com": [
+    "all-employees",
+    "employees-us"
+  ],
+  "cfo@corp.com": [
+    "all-employees",
+    "execs",
+    "leadership",
+    "employees-us"
+  ],
+  "contractor@ext.com": [],
+  "sarah@corp.com": [
+    "all-employees",
+    "engineering",
+    "employees-us"
+  ],
+  "ananya@corp.com": [
+    "all-employees",
+    "engineering",
+    "employees-in"
+  ],
+  "rohan@corp.com": [
+    "all-employees",
+    "engineering",
+    "employees-in"
+  ]
+}

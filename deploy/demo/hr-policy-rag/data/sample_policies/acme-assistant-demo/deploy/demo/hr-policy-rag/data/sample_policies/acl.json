@@ -1,0 +1,77 @@
+{
+  "code_of_conduct.md": {
+    "title": "Code of Conduct",
+    "public": true
+  },
+  "pto_policy.md": {
+    "title": "PTO Policy",
+    "public": false,
+    "allowed_groups": [
+      "all-employees"
+    ]
+  },
+  "parental_leave.md": {
+    "title": "Parental Leave Policy",
+    "public": false,
+    "allowed_groups": [
+      "all-employees"
+    ]
+  },
+  "compensation_bands.md": {
+    "title": "Compensation Bands",
+    "public": false,
+    "allowed_groups": [
+      "hr-admins"
+    ],
+    "allowed_users": [
+      "cfo@corp.com"
+    ]
+  },
+  "engineering_oncall.md": {
+    "title": "Engineering On-Call Policy",
+    "public": false,
+    "allowed_groups": [
+      "engineering"
+    ]
+  },
+  "parental_leave_india.md": {
+    "title": "India Leave Supplement",
+    "public": false,
+    "allowed_groups": [
+      "employees-in",
+      "hr-admins"
+    ]
+  },
+  "parental_leave_us.md": {
+    "title": "US Leave Supplement",
+    "public": false,
+    "allowed_groups": [
+      "employees-us",
+      "hr-admins"
+    ]
+  },
+  "leave_of_absence_procedure.md": {
+    "title": "Leave of Absence Procedure",
+    "public": false,
+    "allowed_groups": [
+      "all-employees"
+    ]
+  },
+  "executive_compensation_bands.md": {
+    "title": "Executive Compensation Bands",
+    "public": false,
+    "allowed_groups": [
+      "hr-admins"
+    ],
+    "allowed_users": [
+      "cfo@corp.com"
+    ]
+  },
+  "executive_equity_plan.md": {
+    "title": "Executive Equity Plan",
+    "public": false,
+    "allowed_groups": [
+      "execs"
+    ]
+  }
+}
