@@ -9,3 +9,4 @@ __all__ = [
     "GoogleDriveConnector",
     "SharePointConnector",
 ]
+from .mcp_drive import MCPDriveConnector  # noqa: E402,F401

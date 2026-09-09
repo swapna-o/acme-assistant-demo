@@ -19,6 +19,7 @@ import os
 from rag.connectors import (
     GoogleDriveConnector,
     LocalFolderConnector,
+    MCPDriveConnector,
     SharePointConnector,
 )
 from rag.system import RagSystem
@@ -33,6 +34,9 @@ def main() -> int:
     p.add_argument("--gdrive-folder", help="Google Drive folder id to ingest")
     p.add_argument("--sharepoint-drive", help="SharePoint drive (library) id")
     p.add_argument("--sharepoint-path", default="root")
+    p.add_argument("--mcp-manifest", help="Google Drive over MCP: a sync manifest written by an MCP client")
+    p.add_argument("--mcp-server", help="Google Drive over MCP, live: the server command, e.g. 'npx -y @modelcontextprotocol/server-gdrive'")
+    p.add_argument("--mcp-folder", help="Drive folder id for a live MCP sync")
     p.add_argument("--index", default=os.path.join(HERE, "index.json"))
     args = p.parse_args()
 
@@ -41,6 +45,10 @@ def main() -> int:
         connectors.append(LocalFolderConnector(args.policies))
     if args.gdrive_folder:
         connectors.append(GoogleDriveConnector(args.gdrive_folder))
+    if args.mcp_manifest:
+        connectors.append(MCPDriveConnector(manifest_path=args.mcp_manifest))
+    elif args.mcp_server:
+        connectors.append(MCPDriveConnector(folder_id=args.mcp_folder or "", server=args.mcp_server.split()))
     if args.sharepoint_drive:
         connectors.append(
             SharePointConnector(args.sharepoint_drive, args.sharepoint_path)
