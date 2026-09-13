@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import { v4 as uuidv4 } from 'uuid'
-import { chat, clearAllSessions, clearSession, agentMode, route, helpState } from './agents/orchestrator.js'
+import { chat, clearAllSessions, clearSession, agentMode, route, helpState, stopRuleTurn } from './agents/orchestrator.js'
 import * as hd from './helpdesk/mock-data.js'
 import * as live from './helpdesk/livechat.js'
 import { resetKb, visibleArticles } from './helpdesk/kb.js'
@@ -162,6 +162,12 @@ app.post('/api/chat', async (req, res) => {
       sessionId: s.chatSessionId, employeeId: s.employeeId, email: s.email, role: s.role,
       employeeType: emp?.employeeType ?? 'unknown', location: emp?.location ?? 'unknown', input: message, tags,
     }, async trace => {
+      // The stop rule runs first: some turns should never reach retrieval or an agent.
+      const stopped = stopRuleTurn(s.chatSessionId, s.employeeId, message)
+      if (stopped) {
+        setTrace({ output: stopped.content })
+        return { ...stopped, traceId: trace.traceId }
+      }
       // The orchestrator decides which use case owns this turn, and says why in the trace.
       const decision = await span('route', 'intent', { message }, () => route(s.chatSessionId, s.employeeId, message))
       if (decision.agent !== 'policy_search') {
@@ -271,7 +277,8 @@ app.get('/api/support/queue', (req, res) => {
   const emp = db.employees[s.employeeId]
   if (!hd.readsQueue(emp)) { res.status(403).json({ error: 'IT support or HR access only' }); return }
   const tickets = [...hd.allTickets()].sort((a, b) => (a.status === 'resolved' ? 1 : 0) - (b.status === 'resolved' ? 1 : 0) || b.createdAt.localeCompare(a.createdAt))
-  const chats = [...live.allChats()].reverse()
+  // Chats opened by the stop rule belong to HR. IT support never sees them; HR sees both.
+  const chats = [...live.allChats()].filter(c => c.route !== 'hr' || emp.role === 'hr_admin').reverse()
   res.json({ tickets, chats, notifications: db.getNotifications(s.employeeId, true) })
 })
 
@@ -326,8 +333,11 @@ app.post('/api/livechat/:id/join', (req, res) => {
   const s = auth(req)
   if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
   const emp = db.employees[s.employeeId]
-  if (!hd.isSupport(emp)) { res.status(403).json({ error: 'IT support only' }); return }
   const id = String(req.params.id).slice(0, 12)
+  const target = live.getChat(id)
+  // A chat opened by the stop rule belongs to HR. IT support cannot join it, and HR does not take IT chats.
+  const mayJoin = target?.route === 'hr' ? emp.role === 'hr_admin' : hd.isSupport(emp)
+  if (!mayJoin) { res.status(403).json({ error: target?.route === 'hr' ? 'HR only' : 'IT support only' }); return }
   const c = live.joinChat(id, emp)
   if (!c) { res.status(404).json({ error: 'Chat not found' }); return }
   // The suggested reply is for the opening message; once the agent has spoken, the composer stays empty.

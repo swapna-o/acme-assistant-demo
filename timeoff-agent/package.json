@@ -22,7 +22,7 @@
     "eval:hr": "tsx eval/runner.ts hr",
     "eval:leave": "tsx eval/runner.ts leave",
     "eval:help": "tsx eval/runner.ts help",
-    "posteval": "python3 ../website/build_evals_page.py",
+    "posteval": "python3 ../site_tools/build_evals_page.py",
     "traces": "tsx scripts/traces.ts"
   },
   "dependencies": {

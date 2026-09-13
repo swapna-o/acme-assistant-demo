@@ -14,8 +14,8 @@ export const PERSONA_EMAIL: Record<Persona, string> = {
   sam: 'sam.okafor@acme.com',
 }
 
-export type Category = 'routing' | 'access' | 'library' | 'agent' | 'leave' | 'safety' | 'flow' | 'manager' | 'hr' | 'help'
-export const CATEGORIES: Category[] = ['routing', 'access', 'library', 'agent', 'leave', 'safety', 'flow', 'manager', 'hr', 'help']
+export type Category = 'routing' | 'access' | 'library' | 'agent' | 'leave' | 'safety' | 'flow' | 'manager' | 'hr' | 'help' | 'sensitive'
+export const CATEGORIES: Category[] = ['routing', 'access', 'library', 'agent', 'leave', 'safety', 'flow', 'manager', 'hr', 'help', 'sensitive']
 
 export interface Check<T> {
   description: string

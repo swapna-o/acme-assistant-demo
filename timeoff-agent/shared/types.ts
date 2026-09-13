@@ -301,6 +301,8 @@ export interface LiveChat {
   agentName?: string
   status: 'waiting' | 'active' | 'ended'
   ticketId?: string
+  /** 'hr' chats come from the stop rule and never appear in the IT queue. */
+  route?: 'it' | 'hr'
   messages: LiveChatMessage[]
   createdAt: string
   endedAt?: string

@@ -205,13 +205,22 @@ and the live chat share one request ID, and "where is my ticket" reads all three
 | propose_ticket | writes a session draft | T1 | category from a fixed list; priority Medium unless the employee asks; tried steps copied from the article offer |
 | submit_ticket | writes to ticketing | T2 | needs a draft and a yes in the latest message |
 | close_ticket | writes status | T2 | requester or owner only; "it worked" on an open ticket counts as the yes |
-| open_ticket (Sam) | reads one ticket plus similar open tickets | T0 | it_support or hr_admin only |
-| find_similar_tickets (Sam) | reads tickets sharing category and symptom tags in 14 days | T0 | it_support only; requester names shown, nothing else personal |
-| propose_article (Sam) | writes a session draft | T1 | title, symptom, steps from the resolved tickets' notes; "applies to" defaults to all employees |
-| publish_article (Sam) | writes to the knowledge base, replies on matching tickets, notifies requesters | T2 | needs a draft and a yes; reply text is templated, not model-written |
+| reply_on_ticket | writes the employee's own note onto their open ticket after "still broken" | T2 | the requester's own open ticket; the note is the employee's message, not model-written |
 | request_live_help | writes a waiting chat | T2 | needs a yes; attaches the open ticket if there is one |
 | send_live_message | writes to the chat | T1 | either party, only while the chat is active |
-| suggest_reply (Sam) | reads ticket plus knowledge base, returns a draft | T0 | shown as a draft in Sam's composer, never sent by the assistant |
+| end_live_chat | ends the chat, leaving the ticket as it stands | T2 | either party, only while a chat is open |
+| open_ticket (Sam) | reads one ticket plus similar open tickets | T0 | it_support or hr_admin only |
+| get_queue (Sam) | reads every open ticket, oldest first, plus who is waiting in chat | T0 | it_support only; an employee never sees the queue |
+| find_similar_tickets (Sam) | reads tickets sharing category and symptom tags in 14 days | T0 | it_support only; requester names shown, nothing else personal |
+| propose_article (Sam) | writes a session draft | T1 | title, symptom, steps from the resolved tickets' notes; "applies to" defaults to all employees |
+| publish_article (Sam) | writes to the knowledge base | T2 | needs a draft and a yes |
+| reply_on_tickets (Sam) | writes a reply on every open ticket the new article answers and notifies each requester | T2 | runs only inside publish_article, after its yes; the reply is the fixed template with the article title and ID, never model-written |
+
+Fifteen tools. The support agent's suggested reply is **not** one of them: `suggestReply()` in
+`server/agents/help.ts` drafts it from the ticket and the knowledge base, the composer renders it
+as a draft, and the assistant never sends it. An earlier version of this spec listed it as a tool
+called `suggest_reply`, which never existed in the code; corrected 2026-09-13.
+
 
 **Gates added.** Yes-gate on ticket submit, article publish, and live help. Owner gate on close.
 Role gate on the queue, similar-cases, and publish. Templated-reply gate: the ticket replies and
@@ -223,7 +232,7 @@ while a chat is open; Sam's panel polls the queue and chats every 2 seconds. No 
 
 ## 5. Evaluation framework
 
-New category `help` in `eval/test-cases.ts`, roughly 12 cases, and `website/build_evals_page.py`
+New category `help` in `eval/test-cases.ts`, roughly 12 cases, and `site_tools/build_evals_page.py`
 gains the category so the site pages render it:
 
 1. Routing: "my laptop is not working" routes to `help` by rule.
@@ -262,7 +271,7 @@ step applies.
 | 4 | Router: `it_request` intent, help agent, session state, classifier label | `server/agents/intent.ts`, `server/agents/orchestrator.ts` |
 | 5 | Routes: tickets, queue, chats, messages, resolve, suggested reply; reset | `server/index.ts` |
 | 6 | Client: Sam persona and nav, HelpMessage card (article, ticket draft, ticket badge, live banner), SupportPanel (queue, chats, suggested reply, resolve), live polling | `src/` |
-| 7 | Eval cases, category on the site, regenerate | `eval/`, `website/build_evals_page.py` |
+| 7 | Eval cases, category on the site, regenerate | `eval/`, `site_tools/build_evals_page.py` |
 | 8 | Site: `work-help.html` in the eight-part order, work.html gains use case 04 and the fifth agent, screenshots | `website/` |
 
 ## 8. DECIDE (defaults applied in the build; change any of them)

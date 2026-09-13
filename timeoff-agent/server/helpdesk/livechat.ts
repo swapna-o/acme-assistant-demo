@@ -29,18 +29,29 @@ export function chatFor(employeeId: string): LiveChat | undefined {
   return [...chats].reverse().find(c => c.employeeId === employeeId && c.status !== 'ended')
 }
 
-export function openChat(emp: Employee, ticketId?: string): LiveChat {
+export function openChat(emp: Employee, ticketId?: string, opts?: { route?: 'it' | 'hr'; toEmployeeId?: string }): LiveChat {
   const existing = chatFor(emp.employeeId)
   if (existing) return existing
   chatSeq += 1
   const now = new Date().toISOString()
+  const route = opts?.route ?? 'it'
+  // The stop rule never copies what was said. The waiting message says who is waiting and nothing else.
+  const opening = route === 'hr'
+    ? `${emp.name} asked to speak to someone in HR. Nothing they said has been copied here.`
+    : `${emp.name} asked for live help${ticketId ? ` on ${ticketId}` : ''}. Waiting for an agent.`
   const c: LiveChat = {
-    chatId: `CHAT-${chatSeq}`, employeeId: emp.employeeId, employeeName: emp.name, status: 'waiting', ticketId,
-    messages: [{ id: ++msgSeq, from: 'system', name: 'Acme Assistant', text: `${emp.name} asked for live help${ticketId ? ` on ${ticketId}` : ''}. Waiting for an agent.`, at: now }],
+    chatId: `CHAT-${chatSeq}`, employeeId: emp.employeeId, employeeName: emp.name, status: 'waiting', ticketId, route,
+    messages: [{ id: ++msgSeq, from: 'system', name: 'Acme Assistant', text: opening, at: now }],
     createdAt: now,
   }
   chats.push(c)
-  db.pushNotification({ toEmployeeId: SUPPORT_AGENT.id, kind: 'live_help', subject: `${emp.name} is waiting for live help`, body: ticketId ? `Ticket ${ticketId} is attached.` : 'No ticket attached.', requestId: c.chatId })
+  db.pushNotification({
+    toEmployeeId: opts?.toEmployeeId ?? SUPPORT_AGENT.id,
+    kind: 'live_help',
+    subject: route === 'hr' ? `${emp.name} asked to speak with you` : `${emp.name} is waiting for live help`,
+    body: route === 'hr' ? 'Sent by the stop rule. No details were copied.' : (ticketId ? `Ticket ${ticketId} is attached.` : 'No ticket attached.'),
+    requestId: c.chatId,
+  })
   return c
 }
 

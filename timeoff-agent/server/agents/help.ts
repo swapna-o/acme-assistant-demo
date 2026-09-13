@@ -334,7 +334,7 @@ function supportTurn(
     const open = call('get_queue', {}, () => hd.allTickets().filter(t => t.status !== 'resolved').sort((a, b) => a.createdAt.localeCompare(b.createdAt)), x => `${x.length} open ticket${x.length === 1 ? '' : 's'} in the queue`)
     if (!open.length) return done('The queue is empty.')
     const lines = open.map(t => `- **${t.ticketId}** ${t.requesterName}, "${t.subject}", ${t.priority}, ${t.status.replace('_', ' ')}, opened ${fmtAgo(t.createdAt)}`).join('\n')
-    const waiting = live.allChats().filter(c => c.status === 'waiting')
+    const waiting = live.allChats().filter(c => c.status === 'waiting' && c.route !== 'hr')
     return done(`${open.length} open:\n${lines}${waiting.length ? `\n\n${waiting.length} employee${waiting.length === 1 ? ' is' : 's are'} waiting for live help: ${waiting.map(c => c.employeeName).join(', ')}. Open Support queue to join.` : ''}\n\nSay "open IT-1047" to see a ticket and the cases like it.`, { tickets: open })
   }
 

@@ -196,7 +196,7 @@ export default function App() {
       if (data.mode) setMode(data.mode)
       if (data.policy) {
         append(threadKey, [{ id: uid(), role: 'assistant', kind: 'policy', content: data.content, ts: data.timestamp, policy: data.policy }])
-      } else if (data.agentLabel === 'Help agent') {
+      } else if (data.agentLabel === 'Help agent' || data.help?.liveChat) {
         if (data.help?.liveChat) {
           setLiveChats(l => ({ ...l, [personaKey]: data.help!.liveChat!.status === 'ended' ? null : data.help!.liveChat! }))
           seenLive.current[personaKey] = Math.max(seenLive.current[personaKey] ?? 0, ...data.help.liveChat.messages.map(m => m.id))

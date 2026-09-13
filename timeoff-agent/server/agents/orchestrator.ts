@@ -22,6 +22,8 @@ import { coverageSummary, pendingSummary, findPending, decisionDraftText } from 
 import { runHelp, type HelpSession } from './help.js'
 import { SYSTEM_PROMPT } from './prompts.js'
 import { classifyIntent, classifyByRules, describe, CONFIRM, CANCEL, LEAVE_INTENT, type Decision, type Agent, type IntentContext } from './intent.js'
+import * as stop from './sensitive.js'
+import * as live from '../helpdesk/livechat.js'
 import { span, event, setTrace, recordLlm, hashOf, currentTrace } from '../tracing/tracer.js'
 import type {
   ChatMessage, Employee, PendingSubmission, TimeOffRequest, TraceStep, VacationOption, PolicySearchResult,
@@ -36,6 +38,8 @@ interface Session {
   pendingDecision?: { requestId: string; decision: 'approved' | 'denied'; note?: string }
   /** Use case 04 state: offered article, ticket or article draft, live chat. */
   help?: HelpSession
+  /** The stop rule offered to connect the employee to HR and is waiting for an answer. */
+  sensitiveAwaiting?: boolean
   lastUserMessage: string
 }
 
@@ -663,6 +667,61 @@ export function routesToAgent(sessionId: string, message: string, employeeId?: s
   return !!d && d.agent !== 'policy_search'
 }
 
+// ---------- the stop rule ----------
+
+/**
+ * Runs in front of the router, because a policy question never reaches chat() at all
+ * (index.ts answers those directly). Returns a reply when the turn should stop, and
+ * undefined when it is an ordinary turn. It writes nothing.
+ */
+export function stopRuleTurn(sessionId: string, employeeId: string, userMessage: string): ChatMessage | undefined {
+  const session = getSession(sessionId, employeeId)
+  const emp = db.employees[employeeId]
+  if (!emp) return undefined
+  session.lastUserMessage = userMessage
+  const hr = Object.values(db.employees).find(e => e.role === 'hr_admin')!
+  const now = () => new Date().toISOString()
+
+  if (session.sensitiveAwaiting) {
+    if (CONFIRM.test(userMessage)) {
+      session.sensitiveAwaiting = undefined
+      const chat = live.openChat(emp, undefined, { route: 'hr', toEmployeeId: hr.employeeId })
+      // Hand the thread to the live relay so what the employee types next reaches the person, not an agent.
+      session.help ??= {}
+      session.help.liveChatId = chat.chatId
+      return {
+        role: 'assistant', content: stop.connectedReply(hr, chat.chatId), timestamp: now(), mode: 'offline',
+        agentLabel: 'Stop rule', help: { liveChat: chat },
+        trace: [{ tool: 'orchestrator', summary: 'Intent: confirm (the stop rule offered a person).' },
+                { tool: 'open_hr_chat', summary: `Opened ${chat.chatId} to ${hr.name}. Nothing the employee said was copied into it, and it does not appear in the IT queue.` }],
+      }
+    }
+    if (CANCEL.test(userMessage)) {
+      session.sensitiveAwaiting = undefined
+      return {
+        role: 'assistant', content: stop.declinedReply(), timestamp: now(), mode: 'offline', agentLabel: 'Stop rule',
+        trace: [{ tool: 'stop_rule', summary: 'Declined. Nothing written.' }],
+      }
+    }
+  }
+  const sensitive = stop.classify(userMessage)
+  if (sensitive === 'stop') {
+    session.sensitiveAwaiting = true
+    return {
+      role: 'assistant', content: stop.stopReply(hr), timestamp: now(), mode: 'offline', agentLabel: 'Stop rule',
+      trace: [{ tool: 'orchestrator', summary: 'Intent: sensitive report (rule: stop list). Stopped before retrieval.' }, ...stop.stopTrace()],
+    }
+  }
+  if (sensitive === 'process') {
+    session.sensitiveAwaiting = true
+    return {
+      role: 'assistant', content: stop.processReply(hr), timestamp: now(), mode: 'offline', agentLabel: 'Stop rule',
+      trace: [{ tool: 'orchestrator', summary: 'Intent: pay or accommodation (rule: stop list). Stopped before retrieval.' }, ...stop.processTrace()],
+    }
+  }
+  return undefined
+}
+
 // ---------- entry point ----------
 
 export async function chat(sessionId: string, employeeId: string, userMessage: string, decision?: Decision): Promise<ChatMessage> {
@@ -670,6 +729,9 @@ export async function chat(sessionId: string, employeeId: string, userMessage: s
   const emp = db.employees[employeeId]
   if (!emp) return { role: 'assistant', content: "I couldn't find your employee profile. Please contact HR.", timestamp: new Date().toISOString() }
   session.lastUserMessage = userMessage
+
+  const stopped = stopRuleTurn(sessionId, employeeId, userMessage)
+  if (stopped) return stopped
 
   const d: Decision = decision
     ?? classifyByRules(intentContext(sessionId, userMessage, employeeId)!, userMessage)
