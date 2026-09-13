@@ -19,13 +19,14 @@ export const PERSONAS: Persona[] = [
   { key: 'rohan', label: 'Manager (India)', name: 'Rohan Mehta', email: 'rohan.mehta@acme.com', ragUser: 'rohan@corp.com', blurb: 'Engineering manager in Bengaluru, Ananya\'s team', role: 'manager' },
   { key: 'manager', label: 'Manager', name: 'Jordan Park', email: 'jordan.park@acme.com', ragUser: 'carol@corp.com', blurb: 'Engineering manager, approves the team\'s time off', role: 'manager' },
   { key: 'hr', label: 'HR admin', name: 'Bob Rivera', email: 'bob.rivera@acme.com', ragUser: 'bob@corp.com', blurb: 'HR business partner, sees compensation bands', role: 'hr_admin' },
+  { key: 'sam', label: 'IT support', name: 'Sam Okafor', email: 'sam.okafor@acme.com', ragUser: 'dave@corp.com', blurb: 'IT support agent, owns the help queue and live help', role: 'it_support' },
 ]
 
-export type UseCaseKey = 'ask' | 'library' | 'requests' | 'approvals' | 'org'
+export type UseCaseKey = 'ask' | 'library' | 'requests' | 'approvals' | 'org' | 'tickets' | 'support'
 
 /** Nav groups. 'Ask' is rendered without a label: it is the front door, not a category. */
-export type Moment = 'Ask' | 'Policies' | 'Time off'
-export const MOMENTS: Moment[] = ['Ask', 'Policies', 'Time off']
+export type Moment = 'Ask' | 'Policies' | 'Time off' | 'Help'
+export const MOMENTS: Moment[] = ['Ask', 'Policies', 'Time off', 'Help']
 
 export interface UseCase {
   key: UseCaseKey
@@ -40,17 +41,18 @@ export interface UseCase {
 export const USE_CASES: UseCase[] = [
   {
     key: 'ask', group: 'Ask', label: 'Ask', icon: '◎',
-    tagline: 'Ask a question and get the policy with its source, or ask for time off and the assistant takes it from there.',
+    tagline: 'Ask a question and get the policy with its source, ask for time off, or say what is broken and the assistant takes it from there.',
     availableFor: () => true,
     // Policy phrasings checked against the RAG demo's offline embedder; the last chip in each set is a deliberate miss for that persona.
     suggestions: p => {
+      if (p.role === 'it_support') return ['What is open in the queue?', 'Open IT-1045', 'Which articles are in the knowledge base?']
       if (p.role === 'hr_admin') return ['What are the compensation bands for executives?', '5 days around Thanksgiving', 'How long is parental leave?', 'What is the engineering on-call policy?']
       if (p.key === 'rohan') return ["Who's out on my team?", 'How much parental leave do my reports get?', 'I want to book a vacation', 'Can I carry over unused PTO?']
       if (p.role === 'manager') return ['I want to book a vacation', "Who's out on my team?", 'Can I carry over unused PTO?', 'What are the compensation bands for executives?']
-      if (p.key === 'contractor') return ['I want to book a vacation', 'What is the code of conduct?', 'How much notice do I need?', 'Can I carry over unused PTO?']
+      if (p.key === 'contractor') return ['I want to book a vacation', 'What is the code of conduct?', 'My badge is not working', 'Can I carry over unused PTO?']
       if (p.key === 'sarah' || p.key === 'ananya') return ['How much maternity leave do I get?', 'I want to book a vacation', 'Can I carry over unused PTO?', 'How long is parental leave?']
       if (p.key === 'parttime') return ['I want to book a vacation', 'Can I carry over unused PTO?', 'What are my balances?', 'What is the engineering on-call policy?']
-      return ['I want to book a vacation', 'Can I carry over unused PTO?', 'What is the engineering on-call policy?', 'What are the compensation bands for executives?']
+      return ['I want to book a vacation', 'My laptop is not working, it keeps freezing', 'Can I carry over unused PTO?', 'What is the engineering on-call policy?', 'What are the compensation bands for executives?']
     },
   },
   {
@@ -75,6 +77,18 @@ export const USE_CASES: UseCase[] = [
     key: 'org', group: 'Time off', label: 'Org overview', icon: '🗓️',
     tagline: 'Every request across the company, read-only.',
     availableFor: p => p.role === 'hr_admin',
+    suggestions: () => [],
+  },
+  {
+    key: 'tickets', group: 'Help', label: 'My tickets', icon: '🛠️',
+    tagline: 'Every ticket you logged, what you tried, and what IT said.',
+    availableFor: p => p.role !== 'it_support',
+    suggestions: () => [],
+  },
+  {
+    key: 'support', group: 'Help', label: 'Support queue', icon: '🎧',
+    tagline: 'Open tickets, the people waiting for live help, and the fix the assistant suggests.',
+    availableFor: p => p.role === 'it_support' || p.role === 'hr_admin',
     suggestions: () => [],
   },
 ]
