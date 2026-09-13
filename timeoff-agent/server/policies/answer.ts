@@ -5,6 +5,7 @@
  */
 import { searchPolicies, groupsFor, canSee, POLICY_DOCS } from './index.js'
 import type { Employee, PolicyAnswer } from '../../shared/types.js'
+import { span } from '../tracing/tracer.js'
 
 const RAG_URL = process.env.RAG_URL ?? 'http://localhost:8930'
 
@@ -51,6 +52,11 @@ export function redact(p: PolicyAnswer): PolicyAnswer {
 }
 
 export async function policyAnswer(emp: Employee, question: string): Promise<PolicyAnswer> {
+  return span('policy', 'policy_answer', { principal: emp.ragUser, question }, () => policyAnswerInner(emp, question),
+    { output: p => ({ engine: p.engine, model: p.model, abstained: p.abstained, sources: p.sources, shelf: p.shelf, retrieved: p.retrieved.map(r => ({ title: r.title, score: r.score })), elapsed_ms: p.elapsed_ms, answer: p.answer }) })
+}
+
+async function policyAnswerInner(emp: Employee, question: string): Promise<PolicyAnswer> {
   try {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 6000)

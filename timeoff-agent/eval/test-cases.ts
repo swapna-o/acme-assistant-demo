@@ -9,6 +9,7 @@ import {
   routedToPolicy, routedToAgent, hasSuggestions, topOption, allOptionsCoverageOk,
   hasPending, pendingWorkDays, noPending, submitted, notSubmitted, traceHas,
   policySource, policyAbstained, shelfIs, noLeak, json,
+  routedToHelp, offeredArticle, noArticle, ticketDrafted, draftTried, noTicket, ticketLogged, similarCases, articlePublished, liveChat,
 } from './assertions.js'
 
 const RAG = process.env.RAG_URL ?? 'http://localhost:8930'
@@ -381,7 +382,7 @@ export const evalCases: EvalCase[] = [
     id: 'hr-01', name: 'HR sees the whole org, read-only', category: 'hr',
     steps: [
       { kind: 'http', as: 'bob', method: 'GET', path: '/api/manager/dashboard', json: [
-        json('everyone but Bob on the roster', j => j.team.length === 10 || `got ${j.team.length}`),
+        json('everyone but Bob on the roster (Sam Okafor joined in use case 04)', j => j.team.length === 11 || `got ${j.team.length}`),
         json('both pending requests visible', j => j.pending.length === 2),
         json('roster spans departments', j => new Set(j.team.map((t: any) => t.employee.department)).size >= 2),
       ] },
@@ -393,6 +394,112 @@ export const evalCases: EvalCase[] = [
     steps: [
       { kind: 'chat', as: 'bob', message: 'I want to book a vacation', reply: [hasSuggestions(3)], text: [contains('12 PTO days')] },
       { kind: 'chat', as: 'bob', message: 'Request option 2', reply: [hasPending()], text: [contains('Dana Whitfield')] },
+    ],
+  },
+
+  // ============================================================ help (use case 04)
+  {
+    id: 'help-01', name: '"my laptop is not working" routes to the help agent and offers the article first', category: 'help',
+    steps: [{ kind: 'chat', as: 'alex', message: 'My laptop is not working, it keeps freezing', reply: [routedToHelp(), offeredArticle('KB-102'), noTicket(), traceHas('search_kb')], text: [contains('Laptop freezes')] }],
+  },
+  {
+    id: 'help-02', name: 'Policy phrasings about devices stay with policy search', category: 'help',
+    steps: [{ kind: 'chat', as: 'alex', message: 'What is the policy on personal devices?', reply: [routedToPolicy()] }],
+  },
+  {
+    id: 'help-03', name: 'The contractor gets no employees-only badge article and the abstain wording', category: 'help',
+    steps: [{ kind: 'chat', as: 'marcus', message: 'My badge is not working at the door', reply: [routedToHelp(), noArticle(), ticketDrafted()], text: [contains('Nothing in the knowledge base you can see'), notContains('KB-106'), notContains('Badge access')] }],
+  },
+  {
+    id: 'help-04', name: '"Still broken" after the article drafts a ticket carrying the tried steps; a stray "maybe" logs nothing', category: 'help',
+    steps: [
+      { kind: 'chat', as: 'alex', message: 'My laptop keeps freezing', reply: [offeredArticle('KB-102')] },
+      { kind: 'chat', as: 'alex', message: 'I installed the update, still freezing', reply: [routedToHelp(), ticketDrafted(), draftTried(2), noTicket(), traceHas('propose_ticket')], text: [contains('Already tried')] },
+      { kind: 'chat', as: 'alex', message: 'sounds good, maybe later', reply: [noTicket(), ticketDrafted()] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/tickets', json: [json('nothing logged for Alex', j => Array.isArray(j) && j.length === 0)] },
+    ],
+  },
+  {
+    id: 'help-05', name: '"Yes" logs IT-1047 owned by Sam with the tried steps attached', category: 'help',
+    steps: [
+      { kind: 'chat', as: 'alex', message: 'My laptop keeps freezing', reply: [offeredArticle('KB-102')] },
+      { kind: 'chat', as: 'alex', message: 'Still broken, I tried the steps', reply: [ticketDrafted()] },
+      { kind: 'chat', as: 'alex', message: 'Yes, log it', reply: [ticketLogged('IT-1047', 'open'), traceHas('submit_ticket')], text: [contains('IT-1047'), contains('Sam Okafor')] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/tickets', json: [json('IT-1047 open with 2 tried steps and KB-102 offered', j => j.some((t: any) => t.ticketId === 'IT-1047' && t.status === 'open' && t.tried.length === 2 && t.offeredArticle === 'KB-102'))] },
+      { kind: 'http', as: 'sam', method: 'GET', path: '/api/notifications', json: [json('Sam was told', j => j.some((n: any) => n.kind === 'ticket_update' && n.subject.includes('IT-1047')))] },
+      { kind: 'chat', as: 'alex', message: 'Where is my ticket?', reply: [routedToHelp()], text: [contains('IT-1047'), contains('open')] },
+    ],
+  },
+  {
+    id: 'help-06', name: 'Sam opens IT-1045 and five cases like it are named, with the cause from the resolved ones', category: 'help',
+    steps: [
+      { kind: 'chat', as: 'sam', message: 'Open IT-1045', reply: [routedToHelp(), similarCases(4), traceHas('find_similar_tickets')], text: [contains('IT-1039'), contains('IT-1040'), contains('IT-1042'), contains('IT-1044'), contains('7.3.9'), contains('draft a help article')] },
+    ],
+  },
+  {
+    id: 'help-07', name: 'An employee cannot open another employee\'s ticket', category: 'help',
+    steps: [
+      { kind: 'chat', as: 'alex', message: 'Open IT-1039', reply: [routedToHelp(), noTicket()], text: [contains('not one of yours'), notContains('Priya')] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/support/queue', status: 403 },
+    ],
+  },
+  {
+    id: 'help-08', name: 'Publish: Sam\'s yes publishes KB-108, replies on the open tickets, and the next laptop question gets KB-108 not KB-102', category: 'help',
+    steps: [
+      { kind: 'chat', as: 'alex', message: 'My laptop keeps freezing', reply: [offeredArticle('KB-102')] },
+      { kind: 'chat', as: 'alex', message: 'Still broken', reply: [ticketDrafted()] },
+      { kind: 'chat', as: 'alex', message: 'Yes', reply: [ticketLogged('IT-1047')] },
+      { kind: 'chat', as: 'sam', message: 'Open IT-1047', reply: [similarCases(5)], text: [contains('5 other tickets')] },
+      { kind: 'chat', as: 'sam', message: 'Yes, draft the article', reply: [routedToHelp(), traceHas('propose_article')], text: [contains('roll back to 7.3.9'), contains('Publish it?')] },
+      { kind: 'chat', as: 'sam', message: 'hmm, let me think', reply: [noTicket()], text: [notContains('Published')] },
+      { kind: 'chat', as: 'sam', message: 'Publish', reply: [articlePublished('KB-108'), traceHas('publish_article'), traceHas('reply_on_tickets')], text: [contains('IT-1047'), contains('IT-1042'), contains('IT-1044'), contains('IT-1045'), contains('KB-102 now points to it')] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/notifications', json: [json('Alex was told about the fix', j => j.some((n: any) => n.kind === 'ticket_update' && /KB-108/.test(n.body)))] },
+      { kind: 'http', as: 'sarah', method: 'GET', path: '/api/tickets', json: [json('IT-1042 carries the templated reply', j => j.some((t: any) => t.ticketId === 'IT-1042' && t.replies.some((r: any) => r.fromRole === 'support' && /KB-108/.test(r.text))))] },
+      { kind: 'chat', as: 'priya', message: 'My laptop is freezing again', reply: [offeredArticle('KB-108')], text: [contains('roll back to 7.3.9'), contains('published by Sam Okafor'), notContains('KB-102')] },
+      { kind: 'chat', as: 'alex', message: 'It worked', reply: [ticketLogged('IT-1047', 'resolved'), traceHas('close_ticket')] },
+    ],
+  },
+  {
+    id: 'help-09', name: 'Live help: "talk to a person" waits for a yes, then opens a chat that Sam sees and can answer', category: 'help',
+    steps: [
+      { kind: 'chat', as: 'alex', message: 'My laptop keeps freezing', reply: [offeredArticle('KB-102')] },
+      { kind: 'chat', as: 'alex', message: 'Still broken', reply: [ticketDrafted()] },
+      { kind: 'chat', as: 'alex', message: 'Yes', reply: [ticketLogged('IT-1047')] },
+      { kind: 'chat', as: 'alex', message: 'Talk to a person', reply: [routedToHelp()], text: [contains('Connect?'), contains('IT-1047')] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/livechat', json: [json('no chat before the yes', j => j === null)] },
+      { kind: 'chat', as: 'alex', message: 'Yes, connect me', reply: [liveChat('waiting'), traceHas('request_live_help')] },
+      { kind: 'http', as: 'sam', method: 'GET', path: '/api/support/queue', json: [json('Sam sees the waiting chat with the ticket attached', j => j.chats.some((c: any) => c.status === 'waiting' && c.employeeName === 'Alex Chen' && c.ticketId === 'IT-1047'))] },
+      { kind: 'http', as: 'sam', method: 'POST', path: '/api/livechat/CHAT-1/join', json: [json('joined, with a suggested reply built from the ticket', j => j.chat.status === 'active' && typeof j.suggestion?.text === 'string' && /IT-1047|7\.4\.1|tried/.test(j.suggestion.text))] },
+      { kind: 'http', as: 'sam', method: 'POST', path: '/api/livechat/CHAT-1/message', body: { text: 'Hi Alex, roll the agent back to 7.3.9 and restart.' }, json: [json('message stored', j => j.messages.some((m: any) => m.from === 'agent' && /7\.3\.9/.test(m.text)))] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/livechat', json: [json('Alex\'s poll carries Sam\'s message', j => j && j.status === 'active' && j.agentName === 'Sam Okafor' && j.messages.some((m: any) => m.from === 'agent'))] },
+      { kind: 'chat', as: 'alex', message: 'That worked, thanks', reply: [routedToHelp(), traceHas('send_live_message')] },
+      { kind: 'http', as: 'sam', method: 'POST', path: '/api/support/tickets/IT-1047/resolve', body: { note: 'Fixed on the call.' }, json: [json('resolved', j => j.status === 'resolved')] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/tickets', json: [json('Alex sees IT-1047 resolved', j => j.some((t: any) => t.ticketId === 'IT-1047' && t.status === 'resolved'))] },
+      { kind: 'chat', as: 'alex', message: 'End chat', reply: [liveChat('ended'), traceHas('end_live_chat')] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/livechat', json: [json('no open chat after ending', j => j === null)] },
+    ],
+  },
+  {
+    id: 'help-10', name: 'Only IT support can join chats, reply on tickets, or resolve someone else\'s ticket', category: 'help',
+    steps: [
+      { kind: 'http', as: 'alex', method: 'POST', path: '/api/support/tickets/IT-1042/resolve', status: 403 },
+      { kind: 'http', as: 'jordan', method: 'POST', path: '/api/support/tickets/IT-1042/reply', body: { text: 'hi' }, status: 403 },
+      { kind: 'http', as: 'bob', method: 'GET', path: '/api/support/queue', json: [json('HR reads the queue', j => Array.isArray(j.tickets) && j.tickets.length >= 8)] },
+      { kind: 'http', as: 'bob', method: 'POST', path: '/api/livechat/CHAT-1/join', status: 403 },
+    ],
+  },
+  {
+    id: 'help-11', name: 'A problem with no article still gets a ticket offer, and a cancel drops it', category: 'help',
+    steps: [
+      { kind: 'chat', as: 'ananya', message: 'The projector in the Bengaluru meeting room is broken', reply: [routedToHelp(), noArticle(), ticketDrafted(), traceHas('search_kb')] },
+      { kind: 'chat', as: 'ananya', message: 'No, cancel', reply: [noTicket()], text: [contains('nothing was logged')] },
+      { kind: 'http', as: 'ananya', method: 'GET', path: '/api/tickets', json: [json('only the seeded monitor ticket', j => j.length === 1 && j[0].ticketId === 'IT-1043')] },
+    ],
+  },
+  {
+    id: 'help-12', name: 'The support queue is the demand data: Sam\'s "what is open" lists every open ticket, oldest first', category: 'help',
+    steps: [
+      { kind: 'chat', as: 'sam', message: 'What is open in the queue?', reply: [routedToHelp(), traceHas('get_queue')], text: [contains('5 open'), contains('IT-1041'), contains('IT-1042'), contains('IT-1043'), contains('IT-1044'), contains('IT-1045'), notContains('IT-1046')] },
     ],
   },
 ]

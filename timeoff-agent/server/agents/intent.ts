@@ -11,9 +11,10 @@
  */
 import Anthropic from '@anthropic-ai/sdk'
 import type { Role } from '../../shared/types.js'
+import { span, recordLlm } from '../tracing/tracer.js'
 
-export type Agent = 'policy_search' | 'time_off' | 'leave' | 'manager'
-export type Intent = 'policy_question' | 'time_off' | 'parental_leave' | 'manager_action' | 'confirm' | 'cancel' | 'pick_option'
+export type Agent = 'policy_search' | 'time_off' | 'leave' | 'manager' | 'help'
+export type Intent = 'policy_question' | 'time_off' | 'parental_leave' | 'manager_action' | 'it_request' | 'confirm' | 'cancel' | 'pick_option'
 
 export interface IntentContext {
   role: Role
@@ -23,6 +24,10 @@ export interface IntentContext {
   leaveAwaiting: boolean
   datesMentioned: boolean
   optionPicked: boolean
+  /** Use case 04: an article was offered, a ticket or article is drafted, live help is asked or open. */
+  helpOffered: boolean
+  helpDraft: boolean
+  helpLive: boolean
 }
 
 export interface Decision {
@@ -37,13 +42,17 @@ export const CANCEL = /\b(no|cancel|never ?mind|nah|don't|dont|nope|stop|scrap)\
 
 export const TIMEOFF_INTENT = /vacation|\bbook(ing)?\b|\bplan(ning)? (a|my|some|our|the|time|vacation|days)|\btrip\b|getaway|time off|days? off|week off|take .* off|balance|how many days|holiday|pending|status|my requests?|\brequest\b|who('s| is) (out|off)|team (calendar|out|off)|anyone (out|off)|notice|blackout|sick day|floating|^\s*(hi|hello|hey|good (morning|afternoon)|help)\b|\d{4}-\d{2}-\d{2}|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b|next (week|monday|tuesday|wednesday|thursday|friday)|tomorrow|\b\d+ (work)?days?\b|thanksgiving|christmas|xmas|new year|long weekend|a week off/i
 export const LEAVE_INTENT = /maternity|paternity|parental|pregnan|adopt|baby|leave of absence|expecting|due date/i
+export const HELP_INTENT = /\b(laptop|computer|macbook|vpn|wi-?fi|wireless|password|locked out|log ?in|monitor|keyboard|mouse|headset|printer|badge|charger|battery|software|install(ing)?|not working|isn'?t working|doesn'?t work|broken|crash(ing|es|ed)?|freez(e|es|ing)|frozen|hangs?|hanging|unresponsive|not responding|ticket|it help|it support|helpdesk|help desk|talk to (a |an |some)?(person|human|someone|agent)|live (help|agent|chat)|real person|speak to (a |an )?(person|human|someone)|(it|that) worked|working now|fixed now|IT-\d{4})\b/i
+export const SUPPORT_INTENT = /\bIT-\d{4}\b|queue|ticket|article|\bkb\b|knowledge|publish|resolve|similar|cases|waiting/i
+
 export const MANAGER_INTENT = /coverage|\b(approve|accept|acknowledge|deny|reject|decline)\b|pending|waiting|queue|approvals?\b|requests? (waiting|to approve|to review)|who('s| is) (out|off)|team (calendar|out|off)/i
 
 const AGENT_NAME: Record<Agent, string> = {
   policy_search: 'policy search',
   time_off: 'the time-off agent',
   leave: 'the parental leave agent',
-  manager: 'the manager steps',
+  manager: 'the manager agent',
+  help: 'the help agent',
 }
 
 function hit(re: RegExp, text: string): string {
@@ -53,6 +62,22 @@ function hit(re: RegExp, text: string): string {
 
 /** Layers one and two: session state, then rules. Null when nothing matched. */
 export function classifyByRules(ctx: IntentContext, message: string): Decision | null {
+  // Use case 04 first: an open live chat owns every message; an offer or a draft owns the follow-up.
+  if (ctx.helpLive) return { intent: 'it_request', agent: 'help', how: 'session', reason: 'live help is open, so this goes to the person' }
+  if (ctx.helpDraft) {
+    if (CONFIRM.test(message) || CANCEL.test(message) || /\bpublish\b/i.test(message)) {
+      const yes = (CONFIRM.test(message) || /\bpublish\b/i.test(message)) && !CANCEL.test(message)
+      return { intent: yes ? 'confirm' : 'cancel', agent: 'help', how: 'session', reason: `a help draft is waiting and this reads as ${yes ? 'a yes' : 'a cancel'}` }
+    }
+    // Anything else while a draft waits goes back to the help agent, which repeats the draft and asks again; nothing is written.
+    if (!LEAVE_INTENT.test(message) && !TIMEOFF_INTENT.test(message)) return { intent: 'it_request', agent: 'help', how: 'session', reason: 'a help draft is waiting and this is neither a yes nor a cancel' }
+  }
+  if (ctx.helpOffered && /worked|fixed|solved|still|didn'?t|did not|not (working|fixed)|no luck|same|again|broken|installed|tried/i.test(message)) {
+    return { intent: 'it_request', agent: 'help', how: 'session', reason: 'an article was offered and this reports how it went' }
+  }
+  if (ctx.role === 'it_support' && (SUPPORT_INTENT.test(message) || /^\s*(hi|hello|hey|help)\b/i.test(message))) {
+    return { intent: 'it_request', agent: 'help', how: 'rule', reason: `support role and matched ${hit(SUPPORT_INTENT, message) || '"help"'}` }
+  }
   const oversees = ctx.role === 'manager' || ctx.role === 'hr_admin'
   if (oversees) {
     if (ctx.hasPendingDecision && (CONFIRM.test(message) || CANCEL.test(message))) {
@@ -62,6 +87,7 @@ export function classifyByRules(ctx: IntentContext, message: string): Decision |
     if (MANAGER_INTENT.test(message)) return { intent: 'manager_action', agent: 'manager', how: 'rule', reason: `matched ${hit(MANAGER_INTENT, message)}` }
   }
   if (LEAVE_INTENT.test(message)) return { intent: 'parental_leave', agent: 'leave', how: 'rule', reason: `matched ${hit(LEAVE_INTENT, message)}` }
+  if (HELP_INTENT.test(message) && !/policy on|policy for|what is the policy|personal device/i.test(message)) return { intent: 'it_request', agent: 'help', how: 'rule', reason: `matched ${hit(HELP_INTENT, message)}` }
   if (ctx.leaveAwaiting && (ctx.datesMentioned || CONFIRM.test(message) || /start|apply|request|begin/i.test(message))) {
     return { intent: ctx.datesMentioned ? 'parental_leave' : 'confirm', agent: 'leave', how: 'session', reason: 'a leave assessment is open and this continues it' }
   }
@@ -85,17 +111,22 @@ policy_question  - asks what a policy, handbook, benefit, or rule says, or wheth
 time_off         - wants to book, plan, or check vacation, PTO, sick days, balances, or holidays
 parental_leave   - maternity, paternity, parental, adoption, or a leave of absence
 manager_action   - approving, denying, team coverage, or what is waiting on a manager
+it_request       - something is broken or not working (laptop, VPN, wifi, password, software), wants IT help, a ticket, or a person
 
 If it could be more than one, or you are unsure, answer policy_question.`
 
 export async function classifyWithModel(message: string): Promise<Intent | null> {
   if (!client) client = new Anthropic({ timeout: 4000, maxRetries: 0 })
-  const r = await client.messages.create({
-    model: CLASSIFIER_MODEL, max_tokens: 12, system: CLASSIFIER_PROMPT,
-    messages: [{ role: 'user', content: message.slice(0, 500) }],
-  })
+  const r = await span('llm', 'intent_classifier', { model: CLASSIFIER_MODEL, message: message.slice(0, 500) }, async s => {
+    const resp = await client!.messages.create({
+      model: CLASSIFIER_MODEL, max_tokens: 12, system: CLASSIFIER_PROMPT,
+      messages: [{ role: 'user', content: message.slice(0, 500) }],
+    })
+    recordLlm(s, CLASSIFIER_MODEL, resp)
+    return resp
+  }, { output: x => x.content })
   const text = r.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map(b => b.text).join('').trim().toLowerCase()
-  const labels: Intent[] = ['policy_question', 'time_off', 'parental_leave', 'manager_action']
+  const labels: Intent[] = ['policy_question', 'time_off', 'parental_leave', 'manager_action', 'it_request']
   return labels.find(l => text.startsWith(l)) ?? null
 }
 
@@ -110,6 +141,7 @@ export async function classifyIntent(ctx: IntentContext, message: string, useMod
       if (label === 'time_off') return { intent: 'time_off', agent: 'time_off', how: 'model', reason: 'no rule matched; the classifier read it as a time-off request' }
       if (label === 'parental_leave') return { intent: 'parental_leave', agent: 'leave', how: 'model', reason: 'no rule matched; the classifier read it as a leave question' }
       if (label === 'manager_action' && oversees) return { intent: 'manager_action', agent: 'manager', how: 'model', reason: 'no rule matched; the classifier read it as a manager action' }
+      if (label === 'it_request') return { intent: 'it_request', agent: 'help', how: 'model', reason: 'no rule matched; the classifier read it as an IT request' }
       if (label) return { intent: 'policy_question', agent: 'policy_search', how: 'model', reason: 'no rule matched; the classifier read it as a policy question' }
     } catch (err) {
       console.error('Intent classifier unavailable, defaulting to policy search:', err instanceof Error ? err.message : err)

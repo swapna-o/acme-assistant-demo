@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../shared/types.js'
 
-export type Persona = 'alex' | 'priya' | 'marcus' | 'sarah' | 'ananya' | 'jordan' | 'rohan' | 'bob'
+export type Persona = 'alex' | 'priya' | 'marcus' | 'sarah' | 'ananya' | 'jordan' | 'rohan' | 'bob' | 'sam'
 
 export const PERSONA_EMAIL: Record<Persona, string> = {
   alex: 'alex.chen@acme.com',
@@ -11,10 +11,11 @@ export const PERSONA_EMAIL: Record<Persona, string> = {
   jordan: 'jordan.park@acme.com',
   rohan: 'rohan.mehta@acme.com',
   bob: 'bob.rivera@acme.com',
+  sam: 'sam.okafor@acme.com',
 }
 
-export type Category = 'routing' | 'access' | 'library' | 'agent' | 'leave' | 'safety' | 'flow' | 'manager' | 'hr'
-export const CATEGORIES: Category[] = ['routing', 'access', 'library', 'agent', 'leave', 'safety', 'flow', 'manager', 'hr']
+export type Category = 'routing' | 'access' | 'library' | 'agent' | 'leave' | 'safety' | 'flow' | 'manager' | 'hr' | 'help'
+export const CATEGORIES: Category[] = ['routing', 'access', 'library', 'agent', 'leave', 'safety', 'flow', 'manager', 'hr', 'help']
 
 export interface Check<T> {
   description: string

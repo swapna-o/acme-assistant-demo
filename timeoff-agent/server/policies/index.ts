@@ -5,6 +5,7 @@
  */
 import type { Employee } from '../../shared/types.js'
 import type { PolicySearchResult, PolicyHit } from '../../shared/types.js'
+import { event } from '../tracing/tracer.js'
 
 export interface PolicyDoc {
   docId: string
@@ -246,6 +247,7 @@ export function searchPolicies(query: string, emp: Employee, topK = 3): PolicySe
   const groups = groupsFor(emp)
   const visible = POLICY_DOCS.filter(d => canSee(d, groups))
   const locked = POLICY_DOCS.filter(d => !canSee(d, groups))
+  event('policy', 'acl_filter', { input: { principal: emp.email, groups }, output: { visible: visible.map(d => d.title), locked: locked.map(d => d.title) }, meta: { index: 'local' } })
   const q = terms(query)
 
   const hits: PolicyHit[] = []

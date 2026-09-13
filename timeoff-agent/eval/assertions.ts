@@ -154,3 +154,49 @@ export function json(description: string, fn: (j: any) => boolean | string): Che
     },
   }
 }
+
+// ---------- reply: use case 04, get help ----------
+
+export function routedToHelp(): Check<ChatReply> {
+  return { description: 'routed to the help agent', check: r => ({ pass: r.agentLabel === 'Help agent', reason: r.agentLabel ?? (r.policy ? 'policy' : 'no label') }) }
+}
+
+export function offeredArticle(id?: string): Check<ChatReply> {
+  return { description: id ? `offers article ${id}` : 'offers an article', check: r => ({ pass: !!r.help?.article && (!id || r.help.article.articleId === id), reason: r.help?.article ? r.help.article.articleId : 'no article' }) }
+}
+
+export function noArticle(): Check<ChatReply> {
+  return { description: 'no article offered', check: r => ({ pass: !r.help?.article, reason: r.help?.article ? r.help.article.articleId : 'none' }) }
+}
+
+export function ticketDrafted(): Check<ChatReply> {
+  return { description: 'a ticket is drafted and waits for a yes', check: r => ({ pass: !!r.help?.ticketDraft && !r.help?.ticket, reason: r.help?.ticketDraft ? `${r.help.ticketDraft.category}, tried ${r.help.ticketDraft.tried.length}` : 'no draft' }) }
+}
+
+export function draftTried(n: number): Check<ChatReply> {
+  return { description: `draft carries ${n} tried step${n === 1 ? '' : 's'}`, check: r => ({ pass: r.help?.ticketDraft?.tried.length === n, reason: String(r.help?.ticketDraft?.tried.length ?? 'none') }) }
+}
+
+export function noTicket(): Check<ChatReply> {
+  return { description: 'no ticket was logged', check: r => ({ pass: !r.help?.ticket, reason: r.help?.ticket ? r.help.ticket.ticketId : 'ok' }) }
+}
+
+export function ticketLogged(id?: string, status?: string): Check<ChatReply> {
+  return { description: id ? `ticket ${id}${status ? ` ${status}` : ''}` : 'a ticket was logged', check: r => {
+    const t = r.help?.ticket
+    const pass = !!t && (!id || t.ticketId === id) && (!status || t.status === status)
+    return { pass, reason: t ? `${t.ticketId} ${t.status}` : 'no ticket' }
+  } }
+}
+
+export function similarCases(n: number): Check<ChatReply> {
+  return { description: `${n} similar cases named`, check: r => ({ pass: (r.help?.similar?.length ?? 0) === n, reason: `${r.help?.similar?.length ?? 0}: ${(r.help?.similar ?? []).map(s => s.ticketId).join(' ')}` }) }
+}
+
+export function articlePublished(id?: string): Check<ChatReply> {
+  return { description: id ? `published ${id}` : 'an article was published', check: r => ({ pass: !!r.help?.published && (!id || r.help.published.articleId === id), reason: r.help?.published?.articleId ?? 'nothing published' }) }
+}
+
+export function liveChat(status: 'waiting' | 'active' | 'ended'): Check<ChatReply> {
+  return { description: `live chat ${status}`, check: r => ({ pass: r.help?.liveChat?.status === status, reason: r.help?.liveChat ? `${r.help.liveChat.chatId} ${r.help.liveChat.status}` : 'no chat' }) }
+}

@@ -21,7 +21,9 @@
     "eval:manager": "tsx eval/runner.ts manager",
     "eval:hr": "tsx eval/runner.ts hr",
     "eval:leave": "tsx eval/runner.ts leave",
-    "posteval": "python3 ../website/build_evals_page.py"
+    "eval:help": "tsx eval/runner.ts help",
+    "posteval": "python3 ../website/build_evals_page.py",
+    "traces": "tsx scripts/traces.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

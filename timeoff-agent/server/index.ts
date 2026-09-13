@@ -1,12 +1,21 @@
 import express from 'express'
 import cors from 'cors'
 import { v4 as uuidv4 } from 'uuid'
-import { chat, clearAllSessions, clearSession, agentMode, route } from './agents/orchestrator.js'
+import { chat, clearAllSessions, clearSession, agentMode, route, helpState } from './agents/orchestrator.js'
+import * as hd from './helpdesk/mock-data.js'
+import * as live from './helpdesk/livechat.js'
+import { resetKb, visibleArticles } from './helpdesk/kb.js'
+import { suggestReply } from './agents/help.js'
 import { describe } from './agents/intent.js'
 import { groupsFor, canSee, POLICY_DOCS } from './policies/index.js'
 import { policyAnswer } from './policies/answer.js'
 import * as db from './workday/mock-data.js'
 import type { ManagerDashboard, Role } from '../shared/types.js'
+import { withTrace, span, setTrace, store as traceStore } from './tracing/tracer.js'
+
+// Local development reads ANTHROPIC_API_KEY and friends from ./.env when present.
+// Production containers carry no .env, so this is a no-op there and the demo stays offline.
+try { process.loadEnvFile() } catch { /* no .env, fine */ }
 
 const app = express()
 const PROD = process.env.NODE_ENV === 'production'
@@ -113,6 +122,9 @@ app.get('/api/auth/me', (req, res) => {
 
 function resetEverything() {
   db.resetMockData()
+  hd.resetTickets()
+  resetKb()
+  live.resetChats()
   clearAllSessions()
   ssoSessions.clear()
 }
@@ -131,32 +143,64 @@ app.post('/api/eval/reset', (req, res) => {
 
 // --- Employee chat ---
 
+function localOnly(req: express.Request): boolean {
+  return ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip ?? '') || req.socket.remoteAddress === '127.0.0.1'
+}
+
 app.post('/api/chat', async (req, res) => {
   const s = auth(req)
   if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
   const message = cleanMessage(req.body?.message)
   if (!message) { res.status(400).json({ error: `Message required, up to ${MAX_MESSAGE} characters` }); return }
   try {
-    // The orchestrator decides which use case owns this turn, and says why in the trace.
-    const decision = await route(s.chatSessionId, s.employeeId, message)
-    if (decision.agent !== 'policy_search') {
-      res.json(await chat(s.chatSessionId, s.employeeId, message, decision))
-      return
-    }
-    const p = await policyAnswer(db.employees[s.employeeId], message)
-    p.trace.unshift({ step: 'Orchestrator', detail: describe(decision) })
-    res.json({
-      agentLabel: 'Policy search',
-      role: 'assistant',
-      content: p.answer,
-      timestamp: new Date().toISOString(),
-      policy: p,
-      trace: p.trace.map(t => ({ tool: t.step, summary: t.detail })),
+    const emp = db.employees[s.employeeId]
+    const tag = typeof req.headers['x-trace-tag'] === 'string' ? req.headers['x-trace-tag'].slice(0, 40) : undefined
+    const tags = tag ? [tag] : []
+    // Local callers (evals, scripts) may pin a turn to the offline planner: deterministic, no model cost.
+    if (req.headers['x-agent-mode'] === 'offline' && localOnly(req)) tags.push('mode:offline')
+    const reply = await withTrace({
+      sessionId: s.chatSessionId, employeeId: s.employeeId, email: s.email, role: s.role,
+      employeeType: emp?.employeeType ?? 'unknown', location: emp?.location ?? 'unknown', input: message, tags,
+    }, async trace => {
+      // The orchestrator decides which use case owns this turn, and says why in the trace.
+      const decision = await span('route', 'intent', { message }, () => route(s.chatSessionId, s.employeeId, message))
+      if (decision.agent !== 'policy_search') {
+        const r = await chat(s.chatSessionId, s.employeeId, message, decision)
+        setTrace({ output: r.content })
+        return { ...r, traceId: trace.traceId }
+      }
+      setTrace({ agent: 'policy_search', intent: decision.intent, how: decision.how })
+      const p = await policyAnswer(emp, message)
+      p.trace.unshift({ step: 'Orchestrator', detail: describe(decision) })
+      setTrace({ output: p.answer })
+      return {
+        agentLabel: 'Policy search',
+        role: 'assistant',
+        content: p.answer,
+        timestamp: new Date().toISOString(),
+        policy: p,
+        trace: p.trace.map(t => ({ tool: t.step, summary: t.detail })),
+        traceId: trace.traceId,
+      }
     })
+    res.json(reply)
   } catch (err) {
     console.error('Chat error:', err)
     res.status(500).json({ error: 'Agent error, check server logs' })
   }
+})
+
+// L2: the trace store, readable from this machine only (the review UI, scripts, evals).
+app.get('/api/traces', (req, res) => {
+  if (!localOnly(req)) { res.status(403).json({ error: 'traces are not available here' }); return }
+  const n = Math.min(Number(req.query.n ?? 50) || 50, 500)
+  res.json(traceStore.list(n).map(t => ({ traceId: t.traceId, startedAt: t.startedAt, email: t.email, role: t.role, mode: t.mode, agent: t.agent, intent: t.intent, how: t.how, input: t.input, output: t.output, durationMs: t.durationMs, llmCalls: t.llmCalls, toolCalls: t.toolCalls, costUsd: t.costUsd, denials: t.denials.length, error: t.error, tags: t.tags })))
+})
+app.get('/api/traces/:id', (req, res) => {
+  if (!localOnly(req)) { res.status(403).json({ error: 'traces are not available here' }); return }
+  const t = traceStore.get(String(req.params.id))
+  if (!t) { res.status(404).json({ error: 'not in memory; read the JSONL file under traces/' }); return }
+  res.json(t)
 })
 
 app.post('/api/chat/reset', (req, res) => {
@@ -204,6 +248,132 @@ app.get('/api/requests', (req, res) => {
   const s = auth(req)
   if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
   res.json(db.getTimeOffRequests(s.employeeId))
+})
+
+// --- Use case 04: tickets, the support queue, live help ---
+
+app.get('/api/tickets', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const emp = db.employees[s.employeeId]
+  res.json(hd.readsQueue(emp) ? [...hd.allTickets()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) : hd.ticketsFor(s.employeeId))
+})
+
+app.get('/api/kb', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  res.json(visibleArticles(db.employees[s.employeeId]))
+})
+
+app.get('/api/support/queue', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const emp = db.employees[s.employeeId]
+  if (!hd.readsQueue(emp)) { res.status(403).json({ error: 'IT support or HR access only' }); return }
+  const tickets = [...hd.allTickets()].sort((a, b) => (a.status === 'resolved' ? 1 : 0) - (b.status === 'resolved' ? 1 : 0) || b.createdAt.localeCompare(a.createdAt))
+  const chats = [...live.allChats()].reverse()
+  res.json({ tickets, chats, notifications: db.getNotifications(s.employeeId, true) })
+})
+
+app.post('/api/support/tickets/:id/reply', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const emp = db.employees[s.employeeId]
+  if (!hd.isSupport(emp)) { res.status(403).json({ error: 'IT support only' }); return }
+  const text = cleanMessage(req.body?.text)
+  if (!text) { res.status(400).json({ error: 'Text required' }); return }
+  const t = hd.replyOnTicket(String(req.params.id).slice(0, 12), emp.name, 'support', text)
+  if (!t) { res.status(404).json({ error: 'Ticket not found' }); return }
+  res.json(t)
+})
+
+app.post('/api/support/tickets/:id/resolve', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const emp = db.employees[s.employeeId]
+  const id = String(req.params.id).slice(0, 12)
+  const existing = hd.getTicket(id)
+  if (!existing) { res.status(404).json({ error: 'Ticket not found' }); return }
+  if (!hd.isSupport(emp) && existing.requesterId !== emp.employeeId) { res.status(403).json({ error: 'Only the requester or IT support can resolve a ticket' }); return }
+  const note = typeof req.body?.note === 'string' ? req.body.note.slice(0, 500) : undefined
+  const t = hd.resolveTicket(id, emp, note)
+  const c = live.allChats().find(x => x.ticketId === id && x.status !== 'ended')
+  if (c) live.addMessage(c.chatId, 'agent', emp.name, `Resolved ${id}.`)
+  res.json(t)
+})
+
+/** The employee's current live chat (waiting or active), or null. The thread polls this while live. */
+app.get('/api/livechat', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const c = live.chatFor(s.employeeId)
+  const hs = helpState(s.chatSessionId, s.employeeId)
+  if (!c && hs.liveChatId) hs.liveChatId = undefined
+  res.json(c ?? null)
+})
+
+app.get('/api/livechat/:id', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const c = live.getChat(String(req.params.id).slice(0, 12))
+  if (!c) { res.status(404).json({ error: 'Chat not found' }); return }
+  const emp = db.employees[s.employeeId]
+  if (c.employeeId !== s.employeeId && !hd.readsQueue(emp)) { res.status(403).json({ error: 'Not your chat' }); return }
+  res.json(c)
+})
+
+app.post('/api/livechat/:id/join', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const emp = db.employees[s.employeeId]
+  if (!hd.isSupport(emp)) { res.status(403).json({ error: 'IT support only' }); return }
+  const id = String(req.params.id).slice(0, 12)
+  const c = live.joinChat(id, emp)
+  if (!c) { res.status(404).json({ error: 'Chat not found' }); return }
+  // The suggested reply is for the opening message; once the agent has spoken, the composer stays empty.
+  const spoken = c.messages.some(m => m.from === 'agent')
+  res.json({ chat: c, suggestion: spoken ? null : (suggestReply(id) ?? null) })
+})
+
+app.get('/api/livechat/:id/suggest', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const emp = db.employees[s.employeeId]
+  if (!hd.isSupport(emp)) { res.status(403).json({ error: 'IT support only' }); return }
+  const sug = suggestReply(String(req.params.id).slice(0, 12))
+  if (!sug) { res.status(404).json({ error: 'Chat not found' }); return }
+  res.json(sug)
+})
+
+app.post('/api/livechat/:id/message', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const emp = db.employees[s.employeeId]
+  const id = String(req.params.id).slice(0, 12)
+  const c = live.getChat(id)
+  if (!c) { res.status(404).json({ error: 'Chat not found' }); return }
+  const text = cleanMessage(req.body?.text)
+  if (!text) { res.status(400).json({ error: 'Text required' }); return }
+  const isEmployee = c.employeeId === s.employeeId
+  if (!isEmployee && !hd.isSupport(emp)) { res.status(403).json({ error: 'Not your chat' }); return }
+  if (c.status === 'ended') { res.status(409).json({ error: 'Chat has ended' }); return }
+  if (!isEmployee && c.status === 'waiting') live.joinChat(id, emp)
+  const out = live.addMessage(id, isEmployee ? 'employee' : 'agent', emp.name, text)
+  if (isEmployee) helpState(s.chatSessionId, s.employeeId).liveChatId = id
+  res.json(out)
+})
+
+app.post('/api/livechat/:id/end', (req, res) => {
+  const s = auth(req)
+  if (!s) { res.status(401).json({ error: 'Not authenticated' }); return }
+  const emp = db.employees[s.employeeId]
+  const id = String(req.params.id).slice(0, 12)
+  const c = live.getChat(id)
+  if (!c) { res.status(404).json({ error: 'Chat not found' }); return }
+  if (c.employeeId !== s.employeeId && !hd.isSupport(emp)) { res.status(403).json({ error: 'Not your chat' }); return }
+  const out = live.endChat(id, emp.name)
+  if (c.employeeId === s.employeeId) helpState(s.chatSessionId, s.employeeId).liveChatId = undefined
+  res.json(out)
 })
 
 // --- Manager view ---
@@ -287,5 +457,5 @@ if (clientDir) {
 const PORT = Number(process.env.PORT ?? 3001)
 app.listen(PORT, () => {
   console.log(`Time-off agent server on http://localhost:${PORT} (agent mode: ${agentMode()})`)
-  console.log('Demo accounts: alex.chen@acme.com (employee), jordan.park@acme.com (manager)')
+  console.log('Demo accounts: alex.chen@acme.com (employee), jordan.park@acme.com (manager), sam.okafor@acme.com (IT support)')
 })

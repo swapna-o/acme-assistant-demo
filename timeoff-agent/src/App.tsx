@@ -6,19 +6,24 @@ import TimeOffMessage from './components/TimeOffMessage'
 import PolicyMessage, { type PolicyReply } from './components/PolicyMessage'
 import ApprovalsPanel from './components/ApprovalsPanel'
 import RequestsPanel from './components/RequestsPanel'
+import HelpMessage from './components/HelpMessage'
+import TicketsPanel from './components/TicketsPanel'
+import SupportPanel from './components/SupportPanel'
 import DocsPanel, { loadDocs } from './components/DocsPanel'
 import { PERSONAS, USE_CASES, type UseCaseKey } from './personas'
-import type { AuthUser, ChatMessage, Notification } from '../shared/types'
+import type { AuthUser, ChatMessage, LiveChat, Notification } from '../shared/types'
 import './styles.css'
 
 interface Msg {
   id: string
   role: 'user' | 'assistant'
-  kind: 'timeoff' | 'policy' | 'system'
+  kind: 'timeoff' | 'policy' | 'system' | 'help' | 'live'
   content: string
   ts: string
   timeoff?: ChatMessage
   policy?: PolicyReply
+  /** kind 'live': who said it in the live help chat. */
+  from?: string
 }
 
 type Auth = { token: string; user: AuthUser }
@@ -36,6 +41,9 @@ export default function App() {
   const [mode, setMode] = useState<'claude' | 'offline' | null>(null)
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null)
   const [banner, setBanner] = useState<{ text: string; key: number } | null>(null)
+  // Use case 04: the employee's live help chat, per persona, and the last chat message already shown.
+  const [liveChats, setLiveChats] = useState<Record<string, LiveChat | null>>({})
+  const seenLive = useRef<Record<string, number>>({})
   const firstPersona = useRef(true)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -82,8 +90,8 @@ export default function App() {
       const { docs } = await loadDocs(auth.token, persona)
       if (cancelled) return
       const open = docs.filter(d => d.allowed).length
-      const extras = USE_CASES.filter(u => (u.key === 'approvals' || u.key === 'org') && u.availableFor(persona)).map(u => u.label)
-      const unlocked = extras.length ? `${extras.join(' and ')} unlocked` : 'no manager or HR views'
+      const extras = USE_CASES.filter(u => (u.key === 'approvals' || u.key === 'org' || u.key === 'support') && u.availableFor(persona)).map(u => u.label)
+      const unlocked = extras.length ? `${extras.join(' and ')} unlocked` : 'no manager, HR, or support views'
       setBanner({ text: `Now viewing as ${persona.name} (${persona.label}): ${open} policy document${open === 1 ? '' : 's'} in scope · ${unlocked}`, key: Date.now() })
     })()
     return () => { cancelled = true }
@@ -121,9 +129,58 @@ export default function App() {
     return () => clearInterval(id)
   }, [auth, personaKey, append, forgetAuth])
 
+  // Use case 04: while live help is open, the thread polls the chat and shows the person's replies.
+  const liveChat = liveChats[personaKey] ?? null
+  useEffect(() => {
+    if (!auth || persona.role === 'it_support') return
+    let cancelled = false
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/livechat', { headers: { Authorization: `Bearer ${auth.token}` } })
+        if (res.status === 401) { forgetAuth(personaKey); return }
+        if (!res.ok || cancelled) return
+        const c: LiveChat | null = await res.json()
+        const key = `${personaKey}:ask`
+        const seen = seenLive.current[personaKey] ?? 0
+        if (c) {
+          const fresh = c.messages.filter(m => m.id > seen && m.from !== 'employee')
+          if (fresh.length) {
+            seenLive.current[personaKey] = c.messages[c.messages.length - 1].id
+            append(key, fresh.map(m => ({ id: uid(), role: 'assistant' as const, kind: m.from === 'agent' ? 'live' as const : 'system' as const, content: m.text, ts: m.at, from: m.name })))
+          }
+        }
+        setLiveChats(l => (l[personaKey]?.status === c?.status && l[personaKey]?.chatId === c?.chatId ? l : { ...l, [personaKey]: c }))
+      } catch { /* ignore */ }
+    }
+    poll()
+    const id = setInterval(poll, 2000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [auth, personaKey, persona.role, append, forgetAuth])
+
+  async function endLive() {
+    if (!auth || !liveChat) return
+    await fetch(`/api/livechat/${liveChat.chatId}/end`, { method: 'POST', headers: { Authorization: `Bearer ${auth.token}` } }).catch(() => undefined)
+    setLiveChats(l => ({ ...l, [personaKey]: null }))
+  }
+
   async function send(text: string) {
     if (!auth || loading) return
     append(threadKey, [{ id: uid(), role: 'user', kind: 'timeoff', content: text, ts: now() }])
+    // Live help: the message goes to the person, not the agent.
+    if (liveChat && liveChat.status !== 'ended' && useCase === 'ask') {
+      try {
+        const res = await fetch(`/api/livechat/${liveChat.chatId}/message`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}` }, body: JSON.stringify({ text }),
+        })
+        if (res.ok) {
+          const c: LiveChat = await res.json()
+          seenLive.current[personaKey] = Math.max(seenLive.current[personaKey] ?? 0, c.messages[c.messages.length - 1].id)
+          return
+        }
+        if (res.status !== 409) return
+        setLiveChats(l => ({ ...l, [personaKey]: null }))
+      } catch { return }
+    }
     setLoading(true)
     try {
       // One endpoint. The server decides whether this is a question for the policy
@@ -139,6 +196,12 @@ export default function App() {
       if (data.mode) setMode(data.mode)
       if (data.policy) {
         append(threadKey, [{ id: uid(), role: 'assistant', kind: 'policy', content: data.content, ts: data.timestamp, policy: data.policy }])
+      } else if (data.agentLabel === 'Help agent') {
+        if (data.help?.liveChat) {
+          setLiveChats(l => ({ ...l, [personaKey]: data.help!.liveChat!.status === 'ended' ? null : data.help!.liveChat! }))
+          seenLive.current[personaKey] = Math.max(seenLive.current[personaKey] ?? 0, ...data.help.liveChat.messages.map(m => m.id))
+        }
+        if (data.content || data.help) append(threadKey, [{ id: uid(), role: 'assistant', kind: 'help', content: data.content, ts: data.timestamp, timeoff: data }])
       } else {
         append(threadKey, [{ id: uid(), role: 'assistant', kind: 'timeoff', content: data.content, ts: data.timestamp, timeoff: data }])
       }
@@ -182,6 +245,7 @@ export default function App() {
       />
 
       <main className="main">
+        <div className="demo-strip" role="note">Demo. Acme is a made-up company; every person and policy here is invented, and nothing connects to a real HR system.</div>
         {banner && (
           <div className="switch-banner" key={banner.key}>
             <span>{banner.text}</span>
@@ -200,6 +264,10 @@ export default function App() {
           <DocsPanel token={auth.token} persona={persona} selected={selectedDoc} onSelect={setSelectedDoc} />
         )}
         {useCase === 'requests' && auth && <RequestsPanel token={auth.token} />}
+        {useCase === 'tickets' && auth && <TicketsPanel token={auth.token} />}
+        {useCase === 'support' && auth && (
+          <SupportPanel token={auth.token} readOnly={persona.role !== 'it_support'} onAsk={text => { setUseCase('ask'); setTimeout(() => send(text), 50) }} />
+        )}
         {(useCase === 'approvals' || useCase === 'org') && auth && (
           <ApprovalsPanel token={auth.token} readOnly={useCase === 'org'} title={useCase === 'org' ? 'Org overview' : 'Team approvals'} />
         )}
@@ -220,7 +288,7 @@ export default function App() {
               )}
 
               {thread.map(m => (
-                <div key={m.id} className={`row ${m.role}`}>
+                <div key={m.id} className={`row ${m.role} ${m.kind === 'live' ? 'live' : ''}`}>
                   {m.role === 'user' ? (
                     <div className="bubble">{m.content}</div>
                   ) : (
@@ -230,6 +298,10 @@ export default function App() {
                       {m.kind === 'timeoff' && m.timeoff && (
                         <TimeOffMessage msg={m.timeoff} isLast={m === lastAssistant} disabled={loading} onSend={send} />
                       )}
+                      {m.kind === 'help' && m.timeoff && (
+                        <HelpMessage msg={m.timeoff} isLast={m === lastAssistant} disabled={loading} onSend={send} />
+                      )}
+                      {m.kind === 'live' && <div className="assistant-body"><div className="live-from">{m.from} · IT support</div><Markdown text={m.content} /></div>}
                       {m.kind === 'system' && <div className="assistant-body system"><Markdown text={m.content} /></div>}
                     </div>
                   )}
@@ -244,10 +316,16 @@ export default function App() {
               <div ref={bottomRef} />
             </div>
 
+            {liveChat && liveChat.status !== 'ended' && (
+              <div className={`live-banner ${liveChat.status}`}>
+                <span>Live help · {liveChat.status === 'waiting' ? 'waiting for an agent' : liveChat.agentName}{liveChat.ticketId ? ` · ${liveChat.ticketId} attached` : ''}</span>
+                <button onClick={endLive}>End chat</button>
+              </div>
+            )}
             <Composer
               onSend={send}
               disabled={!auth || loading}
-              placeholder="Ask about a policy, or ask for time off..." 
+              placeholder={liveChat && liveChat.status !== 'ended' ? `Message ${liveChat.agentName ?? 'IT support'}...` : 'Ask about a policy, ask for time off, or say what is broken...'}
             />
           </>
         )}

@@ -88,6 +88,14 @@ export const employees: Record<string, Employee> = {
     manager: MANAGER_IN,
     ragUser: 'ananya@corp.com',
   },
+  'WD-10099': {
+    employeeId: 'WD-10099', name: 'Sam Okafor', email: 'sam.okafor@acme.com',
+    employeeType: 'full-time', role: 'it_support', department: 'IT',
+    title: 'IT Support Specialist', hireDate: '2021-04-05', location: 'US-TX',
+    workSchedule: { days: FIVE_DAY, hoursPerDay: 8 },
+    manager: { id: 'WD-10003', name: 'Lena Fischer', email: 'lena.fischer@acme.com' },
+    ragUser: 'dave@corp.com',
+  },
   'WD-10063': {
     employeeId: 'WD-10063', name: 'David Lee', email: 'david.lee@acme.com',
     employeeType: 'full-time', role: 'employee', department: 'Engineering',
@@ -336,7 +344,7 @@ export function decideRequest(requestId: string, decision: 'approved' | 'denied'
   return req
 }
 
-function pushNotification(n: Omit<Notification, 'id' | 'createdAt' | 'read'>) {
+export function pushNotification(n: Omit<Notification, 'id' | 'createdAt' | 'read'>) {
   notifSeq += 1
   notificationsDb.push({ id: `NOTE-${notifSeq}`, createdAt: new Date().toISOString(), read: false, ...n })
 }

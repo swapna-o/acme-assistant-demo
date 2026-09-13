@@ -19,8 +19,10 @@ import { searchPolicies, policyRules } from '../policies/index.js'
 import { fmt, fmtLong } from './planner.js'
 import { assessParentalLeave, leaveDetails, type LeaveAssessment } from './leave.js'
 import { coverageSummary, pendingSummary, findPending, decisionDraftText } from './manager.js'
+import { runHelp, type HelpSession } from './help.js'
 import { SYSTEM_PROMPT } from './prompts.js'
 import { classifyIntent, classifyByRules, describe, CONFIRM, CANCEL, LEAVE_INTENT, type Decision, type Agent, type IntentContext } from './intent.js'
+import { span, event, setTrace, recordLlm, hashOf, currentTrace } from '../tracing/tracer.js'
 import type {
   ChatMessage, Employee, PendingSubmission, TimeOffRequest, TraceStep, VacationOption, PolicySearchResult,
 } from '../../shared/types.js'
@@ -32,13 +34,23 @@ interface Session {
   lastOptions?: VacationOption[]
   leave?: { assessment: LeaveAssessment; stage: 'offered' | 'awaiting_date'; expectedDate?: string }
   pendingDecision?: { requestId: string; decision: 'approved' | 'denied'; note?: string }
+  /** Use case 04 state: offered article, ticket or article draft, live chat. */
+  help?: HelpSession
   lastUserMessage: string
 }
 
 const sessions = new Map<string, Session>()
 const MODEL = 'claude-opus-5'
 
+/**
+ * claude when a key is present, offline otherwise. Two overrides keep the regression
+ * suite deterministic and free even with a key on the machine: AGENT_MODE=offline for
+ * the whole process, or the tag mode:offline on the current trace (set from the
+ * x-agent-mode header, loopback callers only).
+ */
 export function agentMode(): 'claude' | 'offline' {
+  if (process.env.AGENT_MODE === 'offline') return 'offline'
+  if (currentTrace()?.tags.includes('mode:offline')) return 'offline'
   return process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN ? 'claude' : 'offline'
 }
 
@@ -53,6 +65,13 @@ export function clearAllSessions() {
 
 export function clearSession(sessionId: string) {
   sessions.delete(sessionId)
+}
+
+/** Use case 04: the live-help routes read and set the chat on the session so the thread stays in live mode. */
+export function helpState(sessionId: string, employeeId: string): HelpSession {
+  const s = getSession(sessionId, employeeId)
+  s.help ??= {}
+  return s.help
 }
 
 
@@ -165,8 +184,15 @@ function leaveDateStep(session: Session, emp: Employee, date: string, lower: str
 
 function submit(session: Session, emp: Employee): { request?: TimeOffRequest; text: string; error?: string } {
   const p = session.pending
-  if (!p) return { text: '', error: 'Nothing is drafted yet. Propose a request first.' }
-  if (!CONFIRM.test(session.lastUserMessage)) return { text: '', error: 'The employee has not confirmed yet. Show the summary and ask before submitting.' }
+  if (!p) {
+    event('gate', 'confirm_gate', { denied: true, reason: 'nothing drafted', input: { lastUserMessage: session.lastUserMessage } })
+    return { text: '', error: 'Nothing is drafted yet. Propose a request first.' }
+  }
+  if (!CONFIRM.test(session.lastUserMessage)) {
+    event('gate', 'confirm_gate', { denied: true, reason: 'no explicit yes in the latest message', input: { lastUserMessage: session.lastUserMessage, pending: p } })
+    return { text: '', error: 'The employee has not confirmed yet. Show the summary and ask before submitting.' }
+  }
+  event('gate', 'confirm_gate', { denied: false, reason: 'explicit yes', input: { lastUserMessage: session.lastUserMessage } })
   if (p.details) {
     const req = db.submitLeaveOfAbsence(emp.employeeId, p.startDate, p.endDate, p.details, 'Submitted via Time Off Assistant')
     session.pending = undefined
@@ -206,15 +232,20 @@ async function runClaude(session: Session, emp: Employee, userMessage: string, t
 
   session.claudeHistory.push({ role: 'user', content: userMessage })
   const messages = session.claudeHistory
+  setTrace({ mode: 'claude', promptHash: hashOf(SYSTEM_PROMPT), toolsHash: hashOf(tools.map(t => [t.name, t.description, t.input_schema])) })
 
   for (let i = 0; i < 12; i++) {
-    const response = await getClient().messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      system: systemFor(emp),
-      tools,
-      messages,
-    })
+    const response = await span('llm', 'messages.create', { model: MODEL, turn: i + 1, historyMessages: messages.length, tools: tools.map(t => t.name) }, async s => {
+      const r = await getClient().messages.create({
+        model: MODEL,
+        max_tokens: 4096,
+        system: systemFor(emp),
+        tools,
+        messages,
+      })
+      recordLlm(s, MODEL, r)
+      return r
+    }, { output: r => ({ stop_reason: r.stop_reason, content: r.content }) })
     messages.push({ role: 'assistant', content: response.content })
 
     if (response.stop_reason !== 'tool_use') {
@@ -226,6 +257,7 @@ async function runClaude(session: Session, emp: Employee, userMessage: string, t
     for (const block of response.content) {
       if (block.type !== 'tool_use') continue
       const input = (block.input ?? {}) as Record<string, unknown>
+      const payload: unknown = await span('tool', block.name, input, async () => {
       let payload: unknown
       if (block.name === 'assess_parental_leave') {
         const a = await assessParentalLeave(emp)
@@ -257,6 +289,8 @@ async function runClaude(session: Session, emp: Employee, userMessage: string, t
           session.lastOptions = plan.options
         }
       }
+      return payload
+      })
       results.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(payload) })
     }
     messages.push({ role: 'user', content: results })
@@ -379,13 +413,14 @@ async function runOffline(session: Session, emp: Employee, message: string): Pro
   const call = (tool: string, input: Record<string, unknown> = {}) => {
     const out = executeDataTool(tool, input, emp)
     trace.push({ tool, input, summary: out.summary })
+    event('tool', tool, { input, output: out.result })
     return out.result
   }
 
   // 1. Confirmation gate
   if (session.pending) {
     if (CONFIRM.test(lower) && !CANCEL.test(lower)) {
-      const r = submit(session, emp)
+      const r = await span('tool', 'submit_time_off_request', {}, () => submit(session, emp), { output: x => x.error ? { error: x.error } : { submitted: x.request } })
       trace.push({ tool: 'submit_time_off_request', summary: r.error ?? `Submitted ${r.request!.requestId} to the HR system and notified ${emp.manager.name} (${emp.manager.email})` })
       return r.error ? reply(r.error) : reply(r.text, { submitted: r.request })
     }
@@ -401,9 +436,9 @@ async function runOffline(session: Session, emp: Employee, message: string): Pro
   if (oversees && session.pendingDecision) {
     const d = session.pendingDecision
     if (CONFIRM.test(lower) && !CANCEL.test(lower)) {
-      if (emp.role !== 'manager') { session.pendingDecision = undefined; return reply('Only the employee\'s manager can decide. HR confirms eligibility but does not approve leave.') }
+      if (emp.role !== 'manager') { event('gate', 'decide_request', { denied: true, reason: `role ${emp.role} may not decide`, input: d }); session.pendingDecision = undefined; return reply('Only the employee\'s manager can decide. HR confirms eligibility but does not approve leave.') }
       try {
-        const req = db.decideRequest(d.requestId, d.decision, d.note)
+        const req = await span('tool', 'decide_request', { request_id: d.requestId, decision: d.decision, note: d.note }, () => db.decideRequest(d.requestId, d.decision, d.note))
         session.pendingDecision = undefined
         trace.push({ tool: 'decide_request', input: { request_id: d.requestId, decision: d.decision }, summary: `${d.decision === 'approved' ? 'Approved' : 'Denied'} ${req.requestId} for ${req.employeeName}; employee notified` })
         return reply(`${d.decision === 'approved' ? 'Approved' : 'Denied'}. ${req.employeeName} has been told${d.note ? ` with your reason: "${d.note}"` : ''}.${req.details ? ' HR will confirm eligibility and reply within 5 business days.' : ''}`)
@@ -418,7 +453,7 @@ async function runOffline(session: Session, emp: Employee, message: string): Pro
     }
   }
   if (oversees && /\b(approve|accept|acknowledge|deny|reject|decline)\b/.test(lower) && !session.pending) {
-    if (emp.role !== 'manager') return reply('Only the employee\'s manager can approve or deny. HR confirms eligibility; you can see every request under Org overview.')
+    if (emp.role !== 'manager') { event('gate', 'decide_request', { denied: true, reason: `role ${emp.role} may not approve or deny`, input: { message } }); return reply('Only the employee\'s manager can approve or deny. HR confirms eligibility; you can see every request under Org overview.') }
     const decision: 'approved' | 'denied' = /\b(deny|reject|decline)\b/.test(lower) ? 'denied' : 'approved'
     const found = findPending(emp, message)
     trace.push({ tool: 'get_pending_approvals', summary: found.req ? `Matched ${found.req.requestId} (${found.req.employeeName})` : found.error ?? 'no match' })
@@ -443,7 +478,7 @@ async function runOffline(session: Session, emp: Employee, message: string): Pro
   // 1b. Parental leave: the agentic-RAG path
   // A fresh leave question re-runs the assessment; a date after an assessment is a follow-up, handled below.
   if (LEAVE_INTENT.test(lower) && !session.pending && !(session.leave && parseDates(message))) {
-    const a = await assessParentalLeave(emp)
+    const a = await span('tool', 'assess_parental_leave', {}, () => assessParentalLeave(emp), { output: x => ({ eligible: x.eligible, entitlementWeeks: x.entitlementWeeks, paidWeeks: x.paidWeeks, basis: x.basis }) })
     trace.push(...a.trace)
     if (!a.eligible) return reply(a.answer)
     session.leave = { assessment: a, stage: 'offered' }
@@ -479,7 +514,7 @@ async function runOffline(session: Session, emp: Employee, message: string): Pro
   const newAsk = /\b\d+\s*(work)?days?\b|vacation|\bbook|\bplan|\btrip\b|time off/.test(lower)
   const picked = newAsk ? undefined : pickOption(message, session.lastOptions)
   if (picked && !/balance|holiday|policy/.test(lower)) {
-    const r = propose(session, emp, 'PTO', picked.startDate, picked.endDate)
+    const r = await span('tool', 'propose_time_off_request', { leave_type_id: 'PTO', start_date: picked.startDate, end_date: picked.endDate }, () => propose(session, emp, 'PTO', picked.startDate, picked.endDate), { output: x => x.error ? { error: x.error } : { drafted: x.pending } })
     trace.push({ tool: 'propose_time_off_request', input: { start_date: picked.startDate, end_date: picked.endDate }, summary: r.error ? `Could not draft: ${r.error}` : `Drafted ${r.pending!.leaveTypeName} ${fmt(picked.startDate)} to ${fmt(picked.endDate)}, ${r.pending!.workDays} days. Waiting for ${first} to confirm.` })
     return r.error ? reply(r.error) : reply(r.text, { pending: r.pending })
   }
@@ -520,7 +555,8 @@ async function runOffline(session: Session, emp: Employee, message: string): Pro
       call('get_leave_balances')
       const policy = call('search_policies', { query: 'notice period for requesting time off, blackout periods' }) as PolicySearchResult
       const conflicts = call('check_date_conflicts', { start_date: explicit.start, end_date: explicit.end }) as { conflicts: { type: string; description: string }[] }
-      const r = propose(session, emp, /sick/.test(lower) ? 'SICK' : /float/.test(lower) ? 'FLOAT' : 'PTO', explicit.start, explicit.end)
+      const leaveTypeId = /sick/.test(lower) ? 'SICK' : /float/.test(lower) ? 'FLOAT' : 'PTO'
+      const r = await span('tool', 'propose_time_off_request', { leave_type_id: leaveTypeId, start_date: explicit.start, end_date: explicit.end }, () => propose(session, emp, leaveTypeId, explicit.start, explicit.end), { output: x => x.error ? { error: x.error } : { drafted: x.pending } })
       trace.push({ tool: 'propose_time_off_request', input: { start_date: explicit.start, end_date: explicit.end }, summary: r.error ? `Could not draft: ${r.error}` : `Drafted ${r.pending!.leaveTypeName} ${fmt(explicit.start)} to ${fmt(explicit.end)}, ${r.pending!.workDays} days. Waiting for ${first} to confirm.` })
       if (r.error) {
         const isBlackout = /blackout/.test(r.error)
@@ -582,10 +618,11 @@ const TOOLSETS: Record<Agent, string[]> = {
   leave: ['search_policies', 'assess_parental_leave', 'propose_leave_of_absence', 'submit_time_off_request', 'get_time_off_requests'],
   manager: [],
   policy_search: [],
+  help: [],
 }
 
 const AGENT_LABEL: Record<Agent, string> = {
-  time_off: 'Time-off agent', leave: 'Parental leave agent', manager: 'Manager steps', policy_search: 'Policy search',
+  time_off: 'Time-off agent', leave: 'Parental leave agent', manager: 'Manager steps', policy_search: 'Policy search', help: 'Help agent',
 }
 
 function toolsFor(agent: Agent): Anthropic.Tool[] {
@@ -605,6 +642,9 @@ function intentContext(sessionId: string, message: string, employeeId?: string):
     leaveAwaiting: !!s?.leave,
     datesMentioned: !!parseDates(message),
     optionPicked: !!(s?.lastOptions && pickOption(message, s.lastOptions)),
+    helpOffered: !!s?.help?.offered,
+    helpDraft: !!(s?.help?.ticketDraft || s?.help?.articleDraft || s?.help?.liveAsk),
+    helpLive: !!s?.help?.liveChatId,
   }
 }
 
@@ -618,7 +658,7 @@ export async function route(sessionId: string, employeeId: string, message: stri
 /** Rules only, synchronous. Kept for the route check script. */
 export function routesToAgent(sessionId: string, message: string, employeeId?: string): boolean {
   const ctx = intentContext(sessionId, message, employeeId)
-    ?? { role: 'employee' as const, hasPendingDraft: false, pendingIsLeave: false, hasPendingDecision: false, leaveAwaiting: false, datesMentioned: false, optionPicked: false }
+    ?? { role: 'employee' as const, hasPendingDraft: false, pendingIsLeave: false, hasPendingDecision: false, leaveAwaiting: false, datesMentioned: false, optionPicked: false, helpOffered: false, helpDraft: false, helpLive: false }
   const d = classifyByRules(ctx, message)
   return !!d && d.agent !== 'policy_search'
 }
@@ -635,8 +675,17 @@ export async function chat(sessionId: string, employeeId: string, userMessage: s
     ?? classifyByRules(intentContext(sessionId, userMessage, employeeId)!, userMessage)
     ?? { intent: 'time_off', agent: 'time_off', how: 'default', reason: 'sent straight to the agent' }
   const tools = toolsFor(d.agent)
+  setTrace({ agent: d.agent, intent: d.intent, how: d.how, mode: d.agent === 'manager' || d.agent === 'help' || agentMode() !== 'claude' ? 'offline' : 'claude' })
   const step: TraceStep = { tool: 'orchestrator', summary: describe(d, tools.length || undefined) }
   const finish = (r: ChatMessage): ChatMessage => ({ ...r, agentLabel: AGENT_LABEL[d.agent], trace: [step, ...(r.trace ?? [])] })
+
+  // Use case 04: the help agent is deterministic in both modes (every write is gated); no fake latency while a live chat relays.
+  if (d.agent === 'help') {
+    session.help ??= {}
+    if (agentMode() !== 'claude' && !session.help.liveChatId) await new Promise(resolve => setTimeout(resolve, 250 + Math.random() * 300))
+    const h = await runHelp(session.help, emp, userMessage)
+    return finish({ role: 'assistant', content: h.content, timestamp: new Date().toISOString(), trace: h.trace, mode: 'offline', help: h.help })
+  }
 
   // Manager steps are deterministic in both modes: a decision is a write, and it should not depend on a model.
   if (d.agent === 'manager' || agentMode() !== 'claude') {
@@ -653,6 +702,8 @@ export async function chat(sessionId: string, employeeId: string, userMessage: s
       console.error('Claude loop failed, falling back to offline planner:', err)
     }
     session.claudeHistory.pop()
+    event('gate', 'claude_fallback', { reason: err instanceof Error ? err.message : String(err), meta: { fellBackToOffline: true } })
+    setTrace({ mode: 'mixed' })
     const r = await runOffline(session, emp, userMessage)
     return finish({ ...r, mode: 'offline' })
   }

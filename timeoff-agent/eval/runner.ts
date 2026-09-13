@@ -69,7 +69,9 @@ async function runStep(step: Step, session: Session): Promise<StepResult> {
     const token = await session.token(step.as)
     const r = await fetch(`${API}/api/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      // The suite pins turns to the offline planner (deterministic, free) unless EVAL_MODE=claude.
+      // Traces from a run are tagged so the review tools can separate them from live use.
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-trace-tag': 'eval', 'x-agent-mode': process.env.EVAL_MODE === 'claude' ? 'claude' : 'offline' },
       body: JSON.stringify({ message: step.message }),
     })
     if (!r.ok) throw new Error(`chat ${r.status}: ${await r.text()}`)

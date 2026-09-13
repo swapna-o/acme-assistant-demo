@@ -1,4 +1,4 @@
-export type Role = 'employee' | 'manager' | 'hr_admin'
+export type Role = 'employee' | 'manager' | 'hr_admin' | 'it_support'
 
 export interface Employee {
   employeeId: string
@@ -146,7 +146,7 @@ export interface PendingSubmission {
 export interface Notification {
   id: string
   toEmployeeId: string
-  kind: 'approval_request' | 'decision'
+  kind: 'approval_request' | 'decision' | 'ticket_update' | 'article' | 'live_help'
   subject: string
   body: string
   requestId: string
@@ -177,7 +177,11 @@ export interface ChatMessage {
   pending?: PendingSubmission
   submitted?: TimeOffRequest
   policy?: PolicyAnswer
+  /** Use case 04: what the help agent offered, drafted, logged, or published this turn. */
+  help?: HelpReply
   mode?: 'claude' | 'offline'
+  /** L2: id of the stored trace for this turn (traces/*.jsonl, GET /api/traces/:id). */
+  traceId?: string
 }
 
 export interface AuthUser {
@@ -203,4 +207,120 @@ export interface ManagerDashboard {
   holidays: Holiday[]
   coverage: { date: string; out: string[]; present: number; teamSize: number; ok: boolean }[]
   notifications: Notification[]
+}
+
+// ---------- use case 04: get help ----------
+
+/** A knowledge base article. Visibility works like policy documents: groups, filtered before ranking. */
+export interface KBArticle {
+  articleId: string
+  title: string
+  symptoms: string[]
+  steps: string[]
+  allowedGroups: string[]   // empty = public
+  author: string
+  publishedAt: string
+  /** The article this one replaces (its step is wrong or out of date). */
+  replaces?: string
+  /** Set on the old article when a newer one replaces it. */
+  supersededBy?: string
+}
+
+export type TicketCategory = 'Hardware, laptop' | 'Network, VPN' | 'Network, wifi' | 'Access, password' | 'Software' | 'Other'
+export type TicketPriority = 'Low' | 'Medium' | 'High'
+export type TicketStatus = 'open' | 'in_progress' | 'resolved'
+
+export interface TicketReply {
+  from: string
+  fromRole: 'employee' | 'support' | 'system'
+  text: string
+  at: string
+}
+
+export interface Ticket {
+  ticketId: string
+  requesterId: string
+  requesterName: string
+  subject: string
+  category: TicketCategory
+  priority: TicketPriority
+  status: TicketStatus
+  ownerId?: string
+  ownerName?: string
+  /** What the employee already tried before the ticket was logged. */
+  tried: string[]
+  /** The article offered before the ticket existed, if any. */
+  offeredArticle?: string
+  tags: string[]
+  replies: TicketReply[]
+  createdAt: string
+  updatedAt: string
+  resolvedAt?: string
+  chatId?: string
+}
+
+export interface TicketDraft {
+  subject: string
+  category: TicketCategory
+  priority: TicketPriority
+  tried: string[]
+  offeredArticle?: string
+}
+
+export interface ArticleDraft {
+  title: string
+  symptoms: string[]
+  steps: string[]
+  allowedGroups: string[]
+  replaces?: string
+  sourceTickets: string[]
+}
+
+export interface SimilarCase {
+  ticketId: string
+  requesterName: string
+  subject: string
+  status: TicketStatus
+  createdAt: string
+  resolution?: string
+}
+
+export interface LiveChatMessage {
+  id: number
+  from: 'employee' | 'agent' | 'system'
+  name: string
+  text: string
+  at: string
+}
+
+export interface LiveChat {
+  chatId: string
+  employeeId: string
+  employeeName: string
+  agentId?: string
+  agentName?: string
+  status: 'waiting' | 'active' | 'ended'
+  ticketId?: string
+  messages: LiveChatMessage[]
+  createdAt: string
+  endedAt?: string
+}
+
+/** What the help agent attaches to a reply so the client can render cards and buttons. */
+export interface HelpReply {
+  /** An article was offered; the client shows its steps and the "It worked" / "Still broken" buttons. */
+  article?: KBArticle
+  articleAsk?: boolean
+  /** A ticket is drafted and waits for a yes. */
+  ticketDraft?: TicketDraft
+  /** A ticket was logged, closed, or is being shown. */
+  ticket?: Ticket
+  tickets?: Ticket[]
+  /** Support side: the cases that look like the open ticket. */
+  similar?: SimilarCase[]
+  articleDraft?: ArticleDraft
+  published?: KBArticle
+  /** Live help: waiting for a yes, or a chat was opened. */
+  liveAsk?: boolean
+  liveChat?: LiveChat
 }
