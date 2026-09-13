@@ -683,7 +683,7 @@ export function stopRuleTurn(sessionId: string, employeeId: string, userMessage:
   const now = () => new Date().toISOString()
 
   if (session.sensitiveAwaiting) {
-    if (CONFIRM.test(userMessage)) {
+    if (stop.STRICT_YES.test(userMessage)) {
       session.sensitiveAwaiting = undefined
       const chat = live.openChat(emp, undefined, { route: 'hr', toEmployeeId: hr.employeeId })
       // Hand the thread to the live relay so what the employee types next reaches the person, not an agent.
@@ -696,13 +696,15 @@ export function stopRuleTurn(sessionId: string, employeeId: string, userMessage:
                 { tool: 'open_hr_chat', summary: `Opened ${chat.chatId} to ${hr.name}. Nothing the employee said was copied into it, and it does not appear in the IT queue.` }],
       }
     }
-    if (CANCEL.test(userMessage)) {
+    if (stop.STRICT_NO.test(userMessage)) {
       session.sensitiveAwaiting = undefined
       return {
         role: 'assistant', content: stop.declinedReply(), timestamp: now(), mode: 'offline', agentLabel: 'Stop rule',
         trace: [{ tool: 'stop_rule', summary: 'Declined. Nothing written.' }],
       }
     }
+    // Anything else is not an answer to the offer. Let it go, and route the message normally.
+    session.sensitiveAwaiting = undefined
   }
   const sensitive = stop.classify(userMessage)
   if (sensitive === 'stop') {

@@ -58,6 +58,19 @@ export const PROCESS =
 export const LOOKUP =
   /what does[^?]{0,40}(say|state|cover)|where (can i find|is|do i find)|link to|policy on|the (policy|handbook|code of conduct)|is there a policy|read (the|about)|does the (policy|handbook|code)/i
 
+/**
+ * Consent for the handoff has to be an answer to the question, not a word that happens to
+ * appear in the next sentence. The general CONFIRM pattern matches "submit", "ok" and "sure"
+ * anywhere in a message, which turned "How do I submit an expense report?" into a yes and
+ * opened a chat with HR (found by hand on the live demo, 2026-09-13). So this branch takes a
+ * short, unambiguous affirmative at the start of the message, and anything else cancels the
+ * offer and goes back to ordinary routing.
+ */
+export const STRICT_YES =
+  /^\s*(yes|yeah|yep|yup|sure|ok(ay)?|please(,)? do|go ahead|do it|connect me|put me through|i would like that)\b/i
+export const STRICT_NO =
+  /^\s*(no|nope|nah|not (now|right now|yet)|cancel|never ?mind|maybe later|not really)\b/i
+
 export type SensitiveKind = 'stop' | 'process'
 
 export function classify(message: string): SensitiveKind | undefined {

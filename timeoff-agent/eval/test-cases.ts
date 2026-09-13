@@ -580,4 +580,17 @@ export const evalCases: EvalCase[] = [
         text: [notContains('ethics line'), notContains('not going to keep a record')] },
     ],
   },
+
+  {
+    id: 'sensitive-09', name: 'A word like submit inside another question is not consent', category: 'sensitive',
+    steps: [
+      { kind: 'chat', as: 'alex', message: 'I want to make an ethics complaint', reply: [traceHas('stop_rule')] },
+      { kind: 'chat', as: 'alex', message: 'How do I submit an expense report?',
+        text: [notContains('has been asked to join'), notContains('Type here and they will see it')] },
+      { kind: 'http', as: 'alex', method: 'GET', path: '/api/livechat', json: [json('no chat was opened', j => j === null)] },
+      { kind: 'chat', as: 'sarah', message: 'I want to make an ethics complaint', reply: [traceHas('stop_rule')] },
+      { kind: 'chat', as: 'sarah', message: 'Yes, connect me', reply: [traceHas('open_hr_chat')] },
+      { kind: 'http', as: 'sarah', method: 'GET', path: '/api/livechat', json: [json('a clear yes still works', j => j && j.route === 'hr')] },
+    ],
+  },
 ]
