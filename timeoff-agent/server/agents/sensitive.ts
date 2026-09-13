@@ -25,8 +25,31 @@
  */
 import type { Employee } from '../../shared/types.js'
 
+/** Named categories. These trip on their own, whatever else the sentence says. */
 export const STOP =
   /harass|discriminat|retaliat|whistle ?bl|hostile work environment|\bbullied\b|bullying|threaten(ed|ing)?\b|assault|groped|ethics (report|complaint|hotline|line)|report (him|her|them|someone|my (manager|boss|lead))|hurt myself|harm myself|suicid|kill myself/i
+
+/**
+ * The paraphrase layer, added 2026-09-13 after the first version missed every sentence that
+ * described the situation without naming the category: "I want to report a safety concern",
+ * "I need to raise a concern about how my team lead treats people". A report verb near a
+ * sensitive object counts as a report.
+ *
+ * This is still words. A person in distress does not reach for the vocabulary in either list,
+ * so production puts a classifier behind them. What the lists buy is a deterministic floor that
+ * runs before retrieval and needs no model call.
+ */
+export const REPORT_VERB =
+  /\b(report|reporting|raise|raising|escalate|escalating|flag|complain|complaint|speak up|blow the whistle)\b/i
+export const SENSITIVE_OBJECT =
+  /\b(concern|issue|incident|misconduct|wrongdoing|violation|unsafe|safety|conduct|behaviou?r|mistreat\w*|abus\w*|anonym\w*|something serious|treats? (people|me|us|others)|treated (me|us|people)|hostile|uncomfortable|inappropriate)\b/i
+
+/**
+ * "Report" is an ordinary word at work. None of these are reports: an expense report, a status
+ * report, who you report to, how many direct reports a manager has.
+ */
+export const NOT_A_REPORT =
+  /\b(expense|status|time|timesheet|weekly|monthly|quarterly|annual|doctor'?s|medical|bug|error)\s+report\b|\breport(s|ing)?\s+to\b|\bdirect reports?\b|\breport my (hours|time|expenses?)\b|\breporting (line|structure|manager)\b/i
 
 export const PROCESS =
   /(pay ?check|pay ?slip|payroll|my pay|was paid|got paid)[^.?!]{0,40}(wrong|short|missing|incorrect|error|less|not right)|underpaid|not been paid|owed (money|pay)|garnish|\baccommodation\b|\bADA\b|disabilit/i
@@ -38,8 +61,9 @@ export const LOOKUP =
 export type SensitiveKind = 'stop' | 'process'
 
 export function classify(message: string): SensitiveKind | undefined {
-  if (LOOKUP.test(message)) return undefined
-  if (STOP.test(message)) return 'stop'
+  if (LOOKUP.test(message)) return undefined          // asking what a document says
+  if (STOP.test(message)) return 'stop'               // a named category
+  if (!NOT_A_REPORT.test(message) && REPORT_VERB.test(message) && SENSITIVE_OBJECT.test(message)) return 'stop'
   if (PROCESS.test(message)) return 'process'
   return undefined
 }
